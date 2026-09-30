@@ -1,0 +1,20 @@
+export default interface proxyView {
+  id:number
+  ip:string
+  port:number
+  address:string
+  protocols:string
+  anonymity:string
+  regionId:number
+  regionCode:string
+  regionName:string
+  regionZhName:string
+  latency:number
+  speed:number
+  uptime:number
+  alive:boolean
+  failCount:number
+  lastCheckedAt:number
+  lastAliveAt:number
+  lastSeenAt:number
+}

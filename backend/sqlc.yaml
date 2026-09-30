@@ -1,0 +1,14 @@
+version: "2"
+sql:
+  - engine: "sqlite"
+    schema: "internal/db/schema.sql"
+    queries: "internal/db/queries.sql"
+    gen:
+      go:
+        package: "db"
+        out: "internal/db"
+        emit_interface: true
+        emit_empty_slices: true
+        overrides:
+          - column: "tools.enabled"
+            go_type: "bool"
