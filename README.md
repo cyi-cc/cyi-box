@@ -187,9 +187,9 @@ make build          # go build + vite build
 - 同步：启动时若无数据或上次超过 20h 补一次，之后每日 00:00（本地时区）全量 diff——
   源上消失即删、已存在刷新指标复活、新增入库；`proxy_syncs` 记录 added/removed/updated 与明细
   （各最多 200 个地址）；
-- 测活：每小时一轮，对距上次检测 >55min 的存活代理做**协议级握手**（SOCKS5 greeting+CONNECT /
+- 测活：每小时一轮，对距上次检测 >55min 的**全部**代理做**协议级握手**（SOCKS5 greeting+CONNECT /
   SOCKS4 / HTTP GET 转发——裸 TCP 连通不算数，防透明网关误判），并发 128、4s 超时；
-  失败标 alive=0，死记录 7 天后物理清除；
+  失败标 alive=0，拨活即复活（alive=1、fail_count 清零），死记录 7 天后物理清除；
 - 页面 `/proxies`：左栏大洲→地区分类（存活数），右侧筛选/搜索/分页列表，底部同步记录可展开变更明细；
 - `ProxySvc`：List/Regions/Stats 登录即可，Syncs/SyncNow/CheckNow 仅 admin。
 

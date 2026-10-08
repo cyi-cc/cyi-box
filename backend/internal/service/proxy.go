@@ -297,8 +297,8 @@ func runProxySync(ctx context.Context, st *store.Store) {
 		sync.Total, sync.Added, sync.Updated, sync.Removed, failed)
 }
 
-// runProxyCheck 测活一轮：取距上次检测超过阈值的存活代理，并发 TCP 拨测；
-// 连不上即标记为死（alive=0），死记录超过保留期后物理清除。
+// runProxyCheck 测活一轮：取距上次检测超过阈值的全部代理（含死记录，拨活即复活），
+// 并发协议级拨测；连不上即标记为死（alive=0），死记录超过保留期后物理清除。
 func runProxyCheck(ctx context.Context, st *store.Store) {
 	if !proxyChecking.CompareAndSwap(false, true) {
 		return

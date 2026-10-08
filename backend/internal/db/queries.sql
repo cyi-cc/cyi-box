@@ -208,7 +208,7 @@ WHERE id = ?;
 DELETE FROM proxies WHERE id = ?;
 
 -- name: ListProxiesDue :many
-SELECT id, ip, port, protocols, fail_count FROM proxies WHERE alive = 1 AND last_checked_at < ? ORDER BY last_checked_at LIMIT 20000;
+SELECT id, ip, port, protocols, fail_count FROM proxies WHERE last_checked_at < ? ORDER BY last_checked_at LIMIT 20000;
 
 -- name: MarkProxyAlive :exec
 UPDATE proxies SET last_checked_at = ?, alive = 1, fail_count = 0, last_alive_at = ?, latency = ? WHERE id = ?;

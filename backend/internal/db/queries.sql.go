@@ -1887,7 +1887,7 @@ func (q *Queries) ListPendingPayOrders(ctx context.Context) ([]PayOrder, error) 
 }
 
 const listProxiesDue = `-- name: ListProxiesDue :many
-SELECT id, ip, port, protocols, fail_count FROM proxies WHERE alive = 1 AND last_checked_at < ? ORDER BY last_checked_at LIMIT 20000
+SELECT id, ip, port, protocols, fail_count FROM proxies WHERE last_checked_at < ? ORDER BY last_checked_at LIMIT 20000
 `
 
 type ListProxiesDueRow struct {
