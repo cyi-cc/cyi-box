@@ -25,9 +25,9 @@ COPY docker/nginx.conf /etc/nginx/http.d/default.conf
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh && mkdir -p /app/data
 
-ENV CYIBOX_PORT=8890 \
+ENV CYIBOX_PORT=8891 \
     CYIBOX_DB=/app/data/cyibox.db
 
-EXPOSE 80
+EXPOSE 80 8890
 VOLUME ["/app/data"]
 ENTRYPOINT ["/entrypoint.sh"]

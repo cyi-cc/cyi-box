@@ -4,7 +4,7 @@ services:
     image: cyi-box:latest
     container_name: cyibox
     ports:
-      - "8890:80"          # 对外端口，左侧可改成任意宿主端口
+      - "8890:8890"        # 对外端口：容器内 nginx 同时监听 80 与 8890，左侧随意改
     volumes:
       - cyibox-data:/app/data   # SQLite + vault.key + 网盘文件都落这里
     environment:
