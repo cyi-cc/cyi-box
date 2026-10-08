@@ -47,6 +47,19 @@ make build    # go build + vite build → backend/cyibox + frontend/dist
 
 `cyibox` 单二进制即可跑（数据库首启自动创建于 `./data/cyibox.db`）；前端 dist 用任意静态服务/反代托管，把 `/api`、`/mcp`、`/m`、`/v1`、`/d` 等前缀转发到后端即可。
 
+## Docker Compose（推荐部署方式）
+
+```bash
+docker compose up -d --build
+```
+
+打开 `http://<宿主机>:8890`（compose 里 `8890:80`，左侧端口随意改）。单容器内含：nginx（托管前端 + 反代）+ 后端二进制，`/app/data` 卷承载 SQLite、vault.key 与网盘文件。
+
+```bash
+CYIBOX_ADMIN_PASSWORD=<强密码> docker compose up -d --build   # 自定义初始管理员密码
+docker compose logs -f                                       # 看日志
+```
+
 ## 环境变量
 
 | 变量 | 默认 | 说明 |

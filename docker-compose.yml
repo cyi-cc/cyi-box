@@ -1,0 +1,17 @@
+services:
+  cyibox:
+    build: .
+    image: cyi-box:latest
+    container_name: cyibox
+    ports:
+      - "8890:80"          # 对外端口，左侧可改成任意宿主端口
+    volumes:
+      - cyibox-data:/app/data   # SQLite + vault.key + 网盘文件都落这里
+    environment:
+      CYIBOX_ADMIN_PASSWORD: ${CYIBOX_ADMIN_PASSWORD:-admin123}   # 首启种子管理员密码，建议改
+      # CYIBOX_ADMIN_NAME: admin
+      # CYIBOX_CORS: "https://a.com,https://b.com"
+    restart: unless-stopped
+
+volumes:
+  cyibox-data:

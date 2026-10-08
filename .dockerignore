@@ -1,0 +1,14 @@
+.git
+node_modules
+frontend/node_modules
+frontend/dist
+backend/data
+backend/cyibox
+docs
+*.log
+*.db
+*.db-shm
+*.db-wal
+.dockerignore
+Dockerfile
+docker-compose.yml
