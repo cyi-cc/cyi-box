@@ -159,7 +159,7 @@ function syncDetail(s: proxySyncView): SyncDetail {
             <div class="region-grp">{{ regionZh[grp] ?? grp }}</div>
             <div
               v-for="r in list" :key="r.id"
-              class="region-row" :class="{ on: regionId === r.id }"
+              class="region-row" :class="{ on: regionId === r.id, dead: !r.aliveCount }"
               @click="pickRegion(r.id)"
             >
               <span class="region-code">{{ r.code }}</span>
@@ -281,6 +281,7 @@ function syncDetail(s: proxySyncView): SyncDetail {
 }
 .region-row:hover { background: var(--cb-cream-2, #f1eee8); }
 .region-row.on { background: var(--cb-yellow); border-color: var(--cb-ink); }
+.region-row.dead { opacity: .38; }
 .region-code {
   font-size: 11px; font-weight: 800; font-family: Consolas, monospace;
   border: 2px solid var(--cb-ink); border-radius: 6px; padding: 0 6px;
