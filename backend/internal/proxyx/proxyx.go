@@ -271,11 +271,13 @@ const probeHost = "www.gstatic.com"
 const probePort = 80
 
 // Check 协议感知测活：按 protocols 依次尝试 SOCKS5/SOCKS4/HTTP 握手，
-// 纯 TCP 连通不算数——必须说出协议正确的应答才算活。返回拨测耗时。
-func Check(ctx context.Context, ip string, port int, protocols string, timeout time.Duration) (int, error) {
+// 纯 TCP 连通不算数——必须说出协议正确的应答才算活。
+// 返回握手成功的协议名（socks5/socks4/http）与拨测耗时。
+func Check(ctx context.Context, ip string, port int, protocols string, timeout time.Duration) (string, int, error) {
 	probes := []func(context.Context, string, int, time.Duration) error{
 		probeSOCKS5, probeSOCKS4, probeHTTP,
 	}
+	names := []string{"socks5", "socks4", "http"}
 	upper := strings.ToUpper(protocols)
 	order := []int{}
 	for i, name := range []string{"SOCKS5", "SOCKS4", "HTTP"} {
@@ -290,12 +292,12 @@ func Check(ctx context.Context, ip string, port int, protocols string, timeout t
 	for _, i := range order {
 		start := time.Now()
 		if err := probes[i](ctx, ip, port, timeout); err == nil {
-			return int(time.Since(start).Milliseconds()), nil
+			return names[i], int(time.Since(start).Milliseconds()), nil
 		} else {
 			lastErr = err
 		}
 	}
-	return 0, lastErr
+	return "", 0, lastErr
 }
 
 func dial(ctx context.Context, ip string, port int, timeout time.Duration) (net.Conn, error) {

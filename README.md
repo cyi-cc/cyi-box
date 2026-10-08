@@ -197,7 +197,8 @@ make build          # go build + vite build
 
 - `/proxies/extract` 页生成密钥（`pk_xxx`，存 `proxy_keys` 表，绑定地区或「全部」），删除即吊销；
 - `GET /v1/proxy?key=<密钥>` 免登录：随机抽 15 个存活候选**并行**协议级探活（3s 超时），
-  先活先回一行 `ip:port` 纯文本；死的顺手标 `alive=0`，最多 4 批 / 20s 总超时，全死 503；
+  先活先回一行 `ip:port` 纯文本（加 `&fmt=url` 返回 `scheme://ip:port`，scheme 为握手实测的
+  socks5h/http/socks4）；死的顺手标 `alive=0`，最多 4 批 / 20s 总超时，全死 503；
 - 每次成功提取 `used_count+1`、`last_used_at` 更新。
 
 ## 系统设置

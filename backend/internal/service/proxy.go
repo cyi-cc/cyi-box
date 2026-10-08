@@ -322,7 +322,7 @@ func runProxyCheck(ctx context.Context, st *store.Store) {
 			defer wg.Done()
 			sem <- struct{}{}
 			defer func() { <-sem }()
-			latency, err := proxyx.Check(ctx, p.Ip, int(p.Port), p.Protocols, proxyCheckTimeout)
+			_, latency, err := proxyx.Check(ctx, p.Ip, int(p.Port), p.Protocols, proxyCheckTimeout)
 			if err != nil {
 				_ = st.MarkProxyFailed(p.Id, now, p.FailCount+1)
 				return

@@ -129,7 +129,7 @@ function regionLabel(k: proxyKeyView): string {
     <div class="usage panel-inset">
       <b>使用方式</b>
       <div class="mono usage-line">GET /api/v1/proxy?key=&lt;密钥&gt;</div>
-      <div class="dim">每次请求实时探活，返回一个可用的 <span class="mono">ip:port</span>（纯文本）。地区由密钥绑定，「全部地区」密钥随机返回任意国家。</div>
+      <div class="dim">每次请求实时探活，返回一个可用的 <span class="mono">ip:port</span>（纯文本）；加 <span class="mono">&amp;fmt=url</span> 返回带协议的 <span class="mono">scheme://ip:port</span>（socks5h/http/socks4）。地区由密钥绑定，「全部地区」密钥随机返回任意国家。</div>
     </div>
 
     <n-modal v-model:show="createVisible" preset="card" title="生成提取密钥" style="width: 420px">

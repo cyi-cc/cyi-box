@@ -26,9 +26,11 @@ type extractResult struct {
 	ok   bool
 }
 
-// ProxyExtractHandler GET /v1/proxy?key=xxx
+// ProxyExtractHandler GET /v1/proxy?key=xxx[&fmt=url]
 // 公开提取接口：key 落库校验，地区绑在 key 上（0=全部）。
-// 并行探测一批候选，谁先探活返回谁，纯文本 "ip:port"；两批全死返回 503。
+// 并行探测一批候选，谁先探活返回谁；默认纯文本 "ip:port"，
+// fmt=url 时带握手实测协议返回 "scheme://ip:port"（socks5h/http/socks4）。
+// 两批全死返回 503。
 func ProxyExtractHandler(st *store.Store) fun.RouteHandler {
 	return func(rc *fun.RouteCtx) error {
 		reqCtx := rc.RequestCtx
@@ -42,6 +44,7 @@ func ProxyExtractHandler(st *store.Store) fun.RouteHandler {
 			routeJSONErr(reqCtx, 401, "invalid key")
 			return nil
 		}
+		withScheme := strings.TrimSpace(string(reqCtx.QueryArgs().Peek("fmt"))) == "url"
 
 		ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(extractDeadline))
 		defer cancel()
@@ -55,10 +58,14 @@ func ProxyExtractHandler(st *store.Store) fun.RouteHandler {
 			if len(items) == 0 {
 				break
 			}
-			if p, _, ok := probeBatch(ctx, st, items); ok {
+			if p, proto, _, ok := probeBatch(ctx, st, items); ok {
 				st.TouchProxyApiKey(k.Id)
 				reqCtx.SetContentType("text/plain; charset=utf-8")
-				reqCtx.SetBodyString(fmt.Sprintf("%s:%d\n", p.Ip, p.Port))
+				if withScheme {
+					reqCtx.SetBodyString(fmt.Sprintf("%s://%s:%d\n", urlScheme(proto), p.Ip, p.Port))
+				} else {
+					reqCtx.SetBodyString(fmt.Sprintf("%s:%d\n", p.Ip, p.Port))
+				}
 				return nil
 			}
 		}
@@ -67,11 +74,21 @@ func ProxyExtractHandler(st *store.Store) fun.RouteHandler {
 	}
 }
 
+// urlScheme 握手协议名 → 代理 URL scheme：SOCKS5 用 socks5h（DNS 走代理端解析）。
+func urlScheme(proto string) string {
+	if proto == "socks5" {
+		return "socks5h"
+	}
+	return proto
+}
+
 // probeBatch 并行探测一批候选：先活先赢，取消其余；死代理顺手标记移出池。
-func probeBatch(ctx context.Context, st *store.Store, items []store.RandomProxy) (store.RandomProxy, int, bool) {
+// 返回胜出的代理及其握手协议名（socks5/socks4/http）。
+func probeBatch(ctx context.Context, st *store.Store, items []store.RandomProxy) (store.RandomProxy, string, int, bool) {
 	type hit struct {
-		p   store.RandomProxy
-		lat int
+		p     store.RandomProxy
+		proto string
+		lat   int
 	}
 	hits := make(chan hit, 1)
 	var wg sync.WaitGroup
@@ -79,13 +96,13 @@ func probeBatch(ctx context.Context, st *store.Store, items []store.RandomProxy)
 		wg.Add(1)
 		go func(p store.RandomProxy) {
 			defer wg.Done()
-			lat, err := proxyx.Check(ctx, p.Ip, int(p.Port), p.Protocols, extractProbeTO)
+			proto, lat, err := proxyx.Check(ctx, p.Ip, int(p.Port), p.Protocols, extractProbeTO)
 			if err != nil {
 				_ = st.MarkProxyFailed(p.Id, time.Now().Unix(), p.FailCount+1)
 				return
 			}
 			select {
-			case hits <- hit{p, lat}:
+			case hits <- hit{p, proto, lat}:
 			case <-ctx.Done():
 			}
 		}(p)
@@ -96,10 +113,10 @@ func probeBatch(ctx context.Context, st *store.Store, items []store.RandomProxy)
 	case h := <-hits:
 		now := time.Now().Unix()
 		_ = st.MarkProxyAlive(h.p.Id, now, now, int64(h.lat))
-		return h.p, h.lat, true
+		return h.p, h.proto, h.lat, true
 	case <-done:
-		return store.RandomProxy{}, 0, false
+		return store.RandomProxy{}, "", 0, false
 	case <-ctx.Done():
-		return store.RandomProxy{}, 0, false
+		return store.RandomProxy{}, "", 0, false
 	}
 }
