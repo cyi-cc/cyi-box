@@ -28,8 +28,7 @@ type extractResult struct {
 
 // ProxyExtractHandler GET /v1/proxy?key=xxx[&fmt=url]
 // 公开提取接口：key 落库校验，地区绑在 key 上（0=全部）。
-// 并行探测一批候选，谁先探活返回谁；默认纯文本 "ip:port"，
-// fmt=url 时带握手实测协议返回 "scheme://ip:port"（socks5h/http/socks4）。
+// 并行探测一批候选，谁先探活返回谁；返回带握手实测协议的 "scheme://ip:port"（socks5h/http/socks4）。
 // 两批全死返回 503。
 func ProxyExtractHandler(st *store.Store) fun.RouteHandler {
 	return func(rc *fun.RouteCtx) error {
@@ -44,7 +43,6 @@ func ProxyExtractHandler(st *store.Store) fun.RouteHandler {
 			routeJSONErr(reqCtx, 401, "invalid key")
 			return nil
 		}
-		withScheme := strings.TrimSpace(string(reqCtx.QueryArgs().Peek("fmt"))) == "url"
 
 		ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(extractDeadline))
 		defer cancel()
@@ -61,11 +59,7 @@ func ProxyExtractHandler(st *store.Store) fun.RouteHandler {
 			if p, proto, _, ok := probeBatch(ctx, st, items); ok {
 				st.TouchProxyApiKey(k.Id)
 				reqCtx.SetContentType("text/plain; charset=utf-8")
-				if withScheme {
-					reqCtx.SetBodyString(fmt.Sprintf("%s://%s:%d\n", urlScheme(proto), p.Ip, p.Port))
-				} else {
-					reqCtx.SetBodyString(fmt.Sprintf("%s:%d\n", p.Ip, p.Port))
-				}
+				reqCtx.SetBodyString(fmt.Sprintf("%s://%s:%d\n", urlScheme(proto), p.Ip, p.Port))
 				return nil
 			}
 		}

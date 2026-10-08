@@ -61,10 +61,8 @@ async function create() {
   }
 }
 
-const withScheme = ref(false)
-
 function extractUrl(k: proxyKeyView): string {
-  return `${location.origin}/api/v1/proxy?key=${k.key}${withScheme.value ? '&fmt=url' : ''}`
+  return `${location.origin}/api/v1/proxy?key=${k.key}`
 }
 
 async function copyUrl(k: proxyKeyView) {
@@ -102,7 +100,6 @@ function regionLabel(k: proxyKeyView): string {
   <div class="panel">
     <div class="panel-title">
       提取密钥 <span class="hint">{{ keys.length }} 个</span>
-      <span class="fmt-toggle">带协议前缀 <n-switch v-model:value="withScheme" size="small" /></span>
       <n-button size="small" type="primary" style="margin-left:auto" @click="openCreate">
         <template #icon><n-icon><AddOutline /></n-icon></template>生成密钥
       </n-button>
@@ -131,8 +128,8 @@ function regionLabel(k: proxyKeyView): string {
 
     <div class="usage panel-inset">
       <b>使用方式</b>
-      <div class="mono usage-line">GET /api/v1/proxy?key=&lt;密钥&gt;{{ withScheme ? '&fmt=url' : '' }}</div>
-      <div class="dim">每次请求实时探活，返回一个可用的 <span class="mono">ip:port</span>（纯文本）；加 <span class="mono">&amp;fmt=url</span> 返回带协议的 <span class="mono">scheme://ip:port</span>（socks5h/http/socks4）。地区由密钥绑定，「全部地区」密钥随机返回任意国家。</div>
+      <div class="mono usage-line">GET /api/v1/proxy?key=&lt;密钥&gt;</div>
+      <div class="dim">每次请求实时探活，返回一个可用的 <span class="mono">scheme://ip:port</span>（协议是握手实测结果：socks5h/http/socks4）。地区由密钥绑定，「全部地区」密钥随机返回任意国家。</div>
     </div>
 
     <n-modal v-model:show="createVisible" preset="card" title="生成提取密钥" style="width: 420px">
@@ -178,7 +175,6 @@ function regionLabel(k: proxyKeyView): string {
 .key-stat { font-size: 12px; font-weight: 700; text-align: right; flex: none; min-width: 90px; }
 .mono { font-family: Consolas, monospace; }
 .dim { color: var(--cb-ink-3); font-weight: 500; }
-.fmt-toggle { display: inline-flex; align-items: center; gap: 6px; margin-left: 14px; font-size: 12px; font-weight: 700; color: var(--cb-ink-2); }
 .usage { margin-top: 16px; }
 .usage-line { margin: 8px 0 4px; font-size: 13px; }
 .panel-inset {
