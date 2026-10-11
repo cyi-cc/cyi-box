@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -23,6 +24,9 @@ import (
 type apiError struct{ msg string }
 
 func (e *apiError) Error() string { return e.msg }
+
+// errNeedRelogin 上游登录态失效的信号（HTML 登录页 / HTTP 401），merchantPost 捕获后自动重登重试。
+var errNeedRelogin = errors.New("upstream re-login required")
 
 // envelope 上游统一响应信封 {code,msg,data}；code==1 为成功。
 type envelope struct {
@@ -134,13 +138,38 @@ func (c *Client) ensureSession() (string, error) {
 	return c.login()
 }
 
-// merchantPost 商户接口调用：带 Merchant-Token；失败原样透出，不自动重登。
+// merchantPost 商户接口调用：带 Merchant-Token；令牌失效（登录页/401）时自动重登并重试一次。
 func (c *Client) merchantPost(ctx context.Context, path string, body, out any) error {
 	tok, err := c.ensureSession()
 	if err != nil {
 		return err
 	}
-	return c.postOnce(ctx, path, body, tok, out)
+	err = c.postOnce(ctx, path, body, tok, out)
+	if !errors.Is(err, errNeedRelogin) {
+		return err
+	}
+	// 旧令牌失效：清缓存强制重登，再原样重试一次；仍失败则透出
+	c.mu.Lock()
+	c.token = ""
+	c.mu.Unlock()
+	tok, err = c.login()
+	if err != nil {
+		return fmt.Errorf("上游令牌失效且重登失败: %w", err)
+	}
+	if err = c.postOnce(ctx, path, body, tok, out); errors.Is(err, errNeedRelogin) {
+		return &apiError{"上游令牌失效，重登后仍被拒绝"}
+	}
+	return err
+}
+
+// reloginMsg 上游业务错误文案是否属于登录态失效。
+func reloginMsg(msg string) bool {
+	for _, kw := range []string{"未登录", "请先登录", "登录已过期", "登录已失效", "重新登录", "登录状态"} {
+		if strings.Contains(msg, kw) {
+			return true
+		}
+	}
+	return false
 }
 
 // post 通用调用：merchantToken 为空=买家接口；data 解码到 out。
@@ -156,13 +185,17 @@ func (c *Client) postOnce(ctx context.Context, path string, body any, merchantTo
 	trimmed := bytes.TrimSpace(raw)
 	// 令牌失效/被风控时上游会回 HTML 登录页，统一归为鉴权类错误触发重登
 	if len(trimmed) > 0 && trimmed[0] == '<' {
-		return &apiError{"上游返回登录页（token 已失效）"}
+		return fmt.Errorf("上游返回登录页（token 已失效）: %w", errNeedRelogin)
 	}
 	var env envelope
 	if err := json.Unmarshal(trimmed, &env); err != nil {
 		return fmt.Errorf("上游响应解析失败: %w", err)
 	}
 	if env.Code != 1 {
+		// 业务错误里带登录态文案（非 HTML/401 形态）同样触发重登
+		if reloginMsg(env.Msg) {
+			return fmt.Errorf("%s: %w", env.Msg, errNeedRelogin)
+		}
 		return &apiError{env.Msg}
 	}
 	if out != nil && len(env.Data) > 0 {
@@ -192,6 +225,9 @@ func (c *Client) postRawOnce(ctx context.Context, path string, body any, merchan
 	data, err := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
 	if err != nil {
 		return nil, err
+	}
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, fmt.Errorf("上游返回 HTTP 401: %w", errNeedRelogin)
 	}
 	// 5xx/HTML 网关故障单独报错；200 + HTML = 令牌失效被踢回登录页
 	if resp.StatusCode >= 500 {
