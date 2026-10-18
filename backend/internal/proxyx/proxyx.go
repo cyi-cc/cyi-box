@@ -1,7 +1,9 @@
 package proxyx
 
 import (
+	"bufio"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -268,13 +270,27 @@ var continents = map[string]string{
 
 // probeTarget 测活拨测目标：公网稳定 HTTP 站点
 const probeHost = "www.gstatic.com"
-const probePort = 80
+const probePort = uint16(443)
+
+// tunnelTLS CONNECT 隧道建立后做一次真实 TLS 握手验证书：能隧道不代表没被
+// 拦截——过期/伪造证书的蜜罐代理在这一步被过滤。
+func tunnelTLS(conn net.Conn, target string, timeout time.Duration) error {
+	conn.SetDeadline(time.Now().Add(timeout))
+	c := tls.Client(conn, &tls.Config{ServerName: target})
+	return c.Handshake()
+}
 
 // Check 协议感知测活：按 protocols 依次尝试 SOCKS5/SOCKS4/HTTP 握手，
-// 纯 TCP 连通不算数——必须说出协议正确的应答才算活。
+// CONNECT 目标默认 www.gstatic.com:443，可用 targetHost 覆盖为消费方
+// 实际要访问的站点（提取接口按目标测活，拿到的才是"对你有用"的活）。
+// CONNECT 成功后还会做一次真实 TLS 握手验证书，过滤 MITM/蜜罐。
 // 返回握手成功的协议名（socks5/socks4/http）与拨测耗时。
-func Check(ctx context.Context, ip string, port int, protocols string, timeout time.Duration) (string, int, error) {
-	probes := []func(context.Context, string, int, time.Duration) error{
+func Check(ctx context.Context, ip string, port int, protocols string, timeout time.Duration, targetHost ...string) (string, int, error) {
+	target := probeHost
+	if len(targetHost) > 0 && targetHost[0] != "" {
+		target = targetHost[0]
+	}
+	probes := []func(context.Context, string, int, string, time.Duration) error{
 		probeSOCKS5, probeSOCKS4, probeHTTP,
 	}
 	names := []string{"socks5", "socks4", "http"}
@@ -291,7 +307,7 @@ func Check(ctx context.Context, ip string, port int, protocols string, timeout t
 	var lastErr error
 	for _, i := range order {
 		start := time.Now()
-		if err := probes[i](ctx, ip, port, timeout); err == nil {
+		if err := probes[i](ctx, ip, port, target, timeout); err == nil {
 			return names[i], int(time.Since(start).Milliseconds()), nil
 		} else {
 			lastErr = err
@@ -305,7 +321,7 @@ func dial(ctx context.Context, ip string, port int, timeout time.Duration) (net.
 	return d.DialContext(ctx, "tcp", net.JoinHostPort(ip, fmt.Sprint(port)))
 }
 
-func probeSOCKS5(ctx context.Context, ip string, port int, timeout time.Duration) error {
+func probeSOCKS5(ctx context.Context, ip string, port int, target string, timeout time.Duration) error {
 	conn, err := dial(ctx, ip, port, timeout)
 	if err != nil {
 		return err
@@ -323,33 +339,55 @@ func probeSOCKS5(ctx context.Context, ip string, port int, timeout time.Duration
 	if buf[0] != 0x05 || buf[1] == 0xff {
 		return fmt.Errorf("socks5 greeting rejected: %x", buf)
 	}
-	// CONNECT domain:port
-	req := append([]byte{0x05, 0x01, 0x00, 0x03, byte(len(probeHost))}, []byte(probeHost)...)
-	req = append(req, byte(probePort>>8), byte(probePort))
+	// CONNECT domain:443
+	req := append([]byte{0x05, 0x01, 0x00, 0x03, byte(len(target))}, []byte(target)...)
+	req = append(req, byte(probePort>>8), byte(probePort & 0xff))
 	if _, err := conn.Write(req); err != nil {
 		return err
 	}
-	// reply: VER REP RSV ATYP ... — 收到合法的 socks5 应答头即算活
-	head := make([]byte, 5)
+	// reply: VER REP RSV ATYP BND.ADDR BND.PORT —— VER=5 且 REP=0x00
+	// （连接被授予）才算通。BND.ADDR 长度随 ATYP 变，必须按类型读干净，
+	// 否则余量会混进后面的 TLS 握手。
+	head := make([]byte, 4)
 	if _, err := io.ReadFull(conn, head); err != nil {
 		return err
 	}
-	// VER=5 且 REP=0x00（连接被授予）才算活；REP!=0 是拒绝（如 host unreachable）
 	if head[0] != 0x05 || head[1] != 0x00 {
 		return fmt.Errorf("bad socks5 reply: %x", head[:2])
 	}
-	return nil
+	var n int
+	switch head[3] {
+	case 0x01:
+		n = 4
+	case 0x04:
+		n = 16
+	case 0x03:
+		lb := make([]byte, 1)
+		if _, err := io.ReadFull(conn, lb); err != nil {
+			return err
+		}
+		n = int(lb[0])
+	default:
+		return fmt.Errorf("bad socks5 atyp: %x", head[3])
+	}
+	if _, err := io.ReadFull(conn, make([]byte, n+2)); err != nil {
+		return err
+	}
+	return tunnelTLS(conn, target, timeout)
 }
 
-func probeSOCKS4(ctx context.Context, ip string, port int, timeout time.Duration) error {
+func probeSOCKS4(ctx context.Context, ip string, port int, target string, timeout time.Duration) error {
 	conn, err := dial(ctx, ip, port, timeout)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 	conn.SetDeadline(time.Now().Add(timeout))
-	// CONNECT 1.1.1.1:80
-	req := []byte{0x04, 0x01, 0x00, 0x50, 1, 1, 1, 1, 0x00}
+	// SOCKS4a CONNECT domain:443（DST.IP=0.0.0.1 表示后续跟域名）：
+	// 纯 SOCKS4 只能连 IP，不支持 4a 的直接判死——反正也隧道不了域名。
+	req := []byte{0x04, 0x01, byte(probePort >> 8), byte(probePort & 0xff), 0, 0, 0, 1, 0x00}
+	req = append(req, []byte(target)...)
+	req = append(req, 0x00)
 	if _, err := conn.Write(req); err != nil {
 		return err
 	}
@@ -361,22 +399,24 @@ func probeSOCKS4(ctx context.Context, ip string, port int, timeout time.Duration
 	if (buf[0] != 0x00 && buf[0] != 0x04) || buf[1] != 0x5a {
 		return fmt.Errorf("bad socks4 reply: %x", buf[:2])
 	}
-	return nil
+	return tunnelTLS(conn, target, timeout)
 }
 
-func probeHTTP(ctx context.Context, ip string, port int, timeout time.Duration) error {
+func probeHTTP(ctx context.Context, ip string, port int, target string, timeout time.Duration) error {
 	conn, err := dial(ctx, ip, port, timeout)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 	conn.SetDeadline(time.Now().Add(timeout))
-	req := fmt.Sprintf("GET http://%s/generate_204 HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n", probeHost, probeHost)
+	// CONNECT www.gstatic.com:443 —— 必须能隧道 HTTPS 才算活。
+	// 只测正向 GET 会把不支持 CONNECT 的网关/透明代理误判为活
+	// （下游走 HTTPS 时 CONNECT 直接被 400/断连）。
+	req := fmt.Sprintf("CONNECT %s:443 HTTP/1.1\r\nHost: %s:443\r\n\r\n", target, target)
 	if _, err := conn.Write([]byte(req)); err != nil {
 		return err
 	}
-	// 读状态行前 12 字节："HTTP/1.x NNN" —— 必须是 2xx（generate_204 应答 204）。
-	// 只验 "HTTP/" 前缀会被 CDN/透明网关的错误页（403/530/error 1001）误判为活。
+	// 读状态行前 12 字节："HTTP/1.x NNN" —— 必须 200（隧道建立）。
 	buf := make([]byte, 12)
 	if _, err := io.ReadFull(conn, buf); err != nil {
 		return err
@@ -385,7 +425,21 @@ func probeHTTP(ctx context.Context, ip string, port int, timeout time.Duration) 
 	if !strings.HasPrefix(s, "HTTP/1.") || len(s) < 12 || s[8] != ' ' || s[9] != '2' {
 		return fmt.Errorf("bad http reply: %q", s)
 	}
-	return nil
+	// 读完响应头余量（到空行为止），别把代理响应头喂给 TLS 握手
+	br := bufio.NewReader(conn)
+	for {
+		line, err := br.ReadString('\n')
+		if err != nil {
+			return err
+		}
+		if line == "\r\n" || line == "\n" {
+			break
+		}
+	}
+	if br.Buffered() > 0 {
+		return fmt.Errorf("proxy pipelined extra bytes")
+	}
+	return tunnelTLS(conn, target, timeout)
 }
 
 // ZhName maps an ISO-like country code to a Chinese display name.
