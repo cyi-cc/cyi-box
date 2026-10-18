@@ -334,8 +334,9 @@ func probeSOCKS5(ctx context.Context, ip string, port int, timeout time.Duration
 	if _, err := io.ReadFull(conn, head); err != nil {
 		return err
 	}
-	if head[0] != 0x05 {
-		return fmt.Errorf("bad socks5 reply: %x", head[0])
+	// VER=5 且 REP=0x00（连接被授予）才算活；REP!=0 是拒绝（如 host unreachable）
+	if head[0] != 0x05 || head[1] != 0x00 {
+		return fmt.Errorf("bad socks5 reply: %x", head[:2])
 	}
 	return nil
 }
@@ -356,8 +357,9 @@ func probeSOCKS4(ctx context.Context, ip string, port int, timeout time.Duration
 	if _, err := io.ReadFull(conn, buf); err != nil {
 		return err
 	}
-	if buf[0] != 0x00 && buf[0] != 0x04 {
-		return fmt.Errorf("bad socks4 reply: %x", buf[0])
+	// VN 可为 0 或 4，但 REP 必须 0x5a（request granted）；0x5b 为拒绝
+	if (buf[0] != 0x00 && buf[0] != 0x04) || buf[1] != 0x5a {
+		return fmt.Errorf("bad socks4 reply: %x", buf[:2])
 	}
 	return nil
 }
@@ -373,12 +375,15 @@ func probeHTTP(ctx context.Context, ip string, port int, timeout time.Duration) 
 	if _, err := conn.Write([]byte(req)); err != nil {
 		return err
 	}
-	buf := make([]byte, 5)
+	// 读状态行前 12 字节："HTTP/1.x NNN" —— 必须是 2xx（generate_204 应答 204）。
+	// 只验 "HTTP/" 前缀会被 CDN/透明网关的错误页（403/530/error 1001）误判为活。
+	buf := make([]byte, 12)
 	if _, err := io.ReadFull(conn, buf); err != nil {
 		return err
 	}
-	if string(buf) != "HTTP/" {
-		return fmt.Errorf("bad http reply: %q", string(buf))
+	s := string(buf)
+	if !strings.HasPrefix(s, "HTTP/1.") || len(s) < 12 || s[8] != ' ' || s[9] != '2' {
+		return fmt.Errorf("bad http reply: %q", s)
 	}
 	return nil
 }
