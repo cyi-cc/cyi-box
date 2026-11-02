@@ -402,18 +402,11 @@ func (s *PaySvc) watchLoop(st *fun.Stream[dto.PayCashierStatusView], tradeNo str
 
 // CashierStatus 收银台轮询：已支付且配置了 return_url 时返回签名回跳地址。
 func (s *PaySvc) CashierStatus(d dto.PayCashierDto) (dto.PayCashierStatusView, error) {
-	o, err := s.Store.Q().GetPayOrderByTradeNo(context.Background(), strings.TrimSpace(d.TradeNo))
+	status, returnURL, err := cashierStatusReply(s.Store, strings.TrimSpace(d.TradeNo))
 	if err != nil {
 		return dto.PayCashierStatusView{}, fun.Error(4004, "订单不存在")
 	}
-	res := dto.PayCashierStatusView{Status: o.Status}
-	if o.Status == payStatusPaid && o.ReturnUrl != "" {
-		pid, key, err := payMerchant(s.Store)
-		if err == nil {
-			res.ReturnUrl = buildSignedURL(o.ReturnUrl, notifyParams(o, pid), key)
-		}
-	}
-	return res, nil
+	return dto.PayCashierStatusView{Status: status, ReturnUrl: returnURL}, nil
 }
 
 func toPayOrderView(r db.PayOrder) dto.PayOrderView {

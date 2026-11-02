@@ -1,4 +1,4 @@
-// pay_routes.go 易支付兼容协议端点：/submit.php（跳收银台）、/mapi.php（JSON下单）、/api.php（查单）。
+// pay_routes.go 易支付兼容协议端点：/submit.php（验签建单+直出收银台页）、/mapi.php（JSON下单）、/api.php（查单）。
 package service
 
 import (
@@ -12,20 +12,18 @@ import (
 	"github.com/cyi-cc/cyi-box/backend/internal/store"
 )
 
-// paySubmitHandler GET/POST /submit.php：验签建单后 302 到收银台。
+// paySubmitHandler GET/POST /submit.php：验签建单后直接渲染收银台页（无跳转）。
 func PaySubmitHandler(st *store.Store, up *payx.Client) fun.RouteHandler {
 	return func(c *fun.RouteCtx) error {
 		order, err := epayCreateOrder(c, st, up)
 		if err != nil {
 			return epayFail(c, err)
 		}
-		// 当码支付：优先跳二维码支付链接（qr.alipay.com），退化到本地收银台
-		target := order.Qrcode
-		if target == "" {
-			target = "/cashier/" + order.TradeNo
+		o, err := st.Q().GetPayOrderByTradeNo(context.Background(), order.TradeNo)
+		if err != nil {
+			return epayFail(c, err)
 		}
-		c.RequestCtx.Redirect(target, 302)
-		return nil
+		return renderCashier(c, o)
 	}
 }
 
