@@ -137,7 +137,7 @@ type cashierPageData struct {
 	TradeNo   string
 	Subject   string
 	Money     string
-	QRDataURL string
+	QRDataURL template.URL // template.URL 豁免 html/template 对 data: URL 的过滤
 	ExpiredAt int64
 	Status    int64
 }
@@ -153,7 +153,7 @@ func renderCashier(c *fun.RouteCtx, o db.PayOrder) error {
 	}
 	if o.Qrcode != "" {
 		if png, err := qrcode.Encode(o.Qrcode, qrcode.Medium, 256); err == nil {
-			d.QRDataURL = "data:image/png;base64," + base64.StdEncoding.EncodeToString(png)
+			d.QRDataURL = template.URL("data:image/png;base64," + base64.StdEncoding.EncodeToString(png))
 		}
 	}
 	var buf bytes.Buffer
