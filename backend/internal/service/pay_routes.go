@@ -12,18 +12,15 @@ import (
 	"github.com/cyi-cc/cyi-box/backend/internal/store"
 )
 
-// paySubmitHandler GET/POST /submit.php：验签建单后直接渲染收银台页（无跳转）。
+// paySubmitHandler GET/POST /submit.php：验签建单后 302 到收银台页（PRG，刷新安全）。
 func PaySubmitHandler(st *store.Store, up *payx.Client) fun.RouteHandler {
 	return func(c *fun.RouteCtx) error {
 		order, err := epayCreateOrder(c, st, up)
 		if err != nil {
 			return epayFail(c, err)
 		}
-		o, err := st.Q().GetPayOrderByTradeNo(context.Background(), order.TradeNo)
-		if err != nil {
-			return epayFail(c, err)
-		}
-		return renderCashier(c, o)
+		c.RequestCtx.Redirect("/cashier.php?trade_no="+order.TradeNo, 302)
+		return nil
 	}
 }
 

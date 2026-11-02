@@ -165,6 +165,19 @@ func renderCashier(c *fun.RouteCtx, o db.PayOrder) error {
 	return nil
 }
 
+// PayCashierPageHandler GET /cashier.php?trade_no=：收银台页渲染
+// （submit.php 302 落点，trade_no 不可枚举即凭证；重复访问按订单当前状态渲染）。
+func PayCashierPageHandler(st *store.Store) fun.RouteHandler {
+	return func(c *fun.RouteCtx) error {
+		o, err := st.Q().GetPayOrderByTradeNo(context.Background(), strings.TrimSpace(c.Param("trade_no")))
+		if err != nil {
+			return epayJSON(c, map[string]any{"code": -1, "msg": "订单不存在"})
+		}
+		lazyCloseExpired(st, &o)
+		return renderCashier(c, o)
+	}
+}
+
 // PayCashierStatusHandler GET /cashier-status?trade_no=：收银台页轮询
 // （公开接口，trade_no 不可枚举即凭证；前端经 /api 前缀代理访问）。
 func PayCashierStatusHandler(st *store.Store) fun.RouteHandler {

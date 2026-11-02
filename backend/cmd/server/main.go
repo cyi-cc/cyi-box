@@ -99,7 +99,8 @@ func main() {
 		f.BindRoute("POST", "/mapi.php", service.PayMapiHandler(st, up)),
 		f.BindRoute("GET", "/api.php", service.PayApiHandler(st)),
 		f.BindRoute("POST", "/api.php", service.PayApiHandler(st)),
-		// submit.php 直出收银台页的状态轮询（经代理走 /api 前缀，直连后端也兼容）
+		// 收银台页（submit.php 的 302 落点）+ 页内状态轮询（经代理走 /api 前缀，直连后端也兼容）
+		f.BindRoute("GET", "/cashier.php", service.PayCashierPageHandler(st)),
 		f.BindRoute("GET", "/cashier-status", service.PayCashierStatusHandler(st)),
 		f.BindRoute("GET", "/api/cashier-status", service.PayCashierStatusHandler(st)),
 		f.BindRoute("GET", "/healthz", func(c *fun.RouteCtx) error {
