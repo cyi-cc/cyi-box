@@ -286,7 +286,7 @@ SELECT * FROM pay_orders WHERE trade_no = ?;
 SELECT * FROM pay_orders WHERE out_trade_no = ?;
 
 -- name: SetPayOrderUpstream :exec
-UPDATE pay_orders SET upstream_trade_no = ?, goods_key = ?, quantity = ?, unit_price = ?, payurl = ?, buyer_contact = ?, query_pwd = ? WHERE id = ?;
+UPDATE pay_orders SET upstream_trade_no = ?, goods_key = ?, quantity = ?, unit_price = ?, payurl = ?, buyer_contact = ?, query_pwd = ?, channel = ? WHERE id = ?;
 
 -- name: SetPayOrderQrcode :exec
 UPDATE pay_orders SET qrcode = ? WHERE id = ?;

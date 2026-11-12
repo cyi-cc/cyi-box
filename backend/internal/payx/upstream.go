@@ -12,7 +12,6 @@ import (
 	"io"
 	"math"
 	"net/http"
-	"net/http/cookiejar"
 	"net/url"
 	"regexp"
 	"strings"
@@ -47,8 +46,8 @@ type Client struct {
 	password string
 	shop     string
 	nickname string
-	channelID   int64
-	channelAt   int64
+	channel   Channel
+	channelAt int64
 
 	// 库存维护锁：确保同一时刻只有一个补库存流程（全程带锁）。
 	stockMu  sync.Mutex
@@ -266,7 +265,7 @@ func (c *Client) Userinfo(ctx context.Context) (nickname, shop string, err error
 	}
 	c.mu.Lock()
 	if c.shop != shop {
-		c.channelID, c.channelAt = 0, 0
+		c.channel, c.channelAt = Channel{}, 0
 	}
 	c.nickname, c.shop = out.Nickname, shop
 	c.mu.Unlock()
@@ -438,40 +437,41 @@ type Channel struct {
 	CustomStatus int64  `json:"custom_status"`
 }
 
-// AlipayChannelID 店铺可用的支付宝支付通道 id，缓存 10 分钟。
-func (c *Client) AlipayChannelID(ctx context.Context, shop string) (int64, error) {
+// PayChannel 店铺当前可用的支付通道：优先微信，否则取第一个已启用通道，缓存 10 分钟。
+func (c *Client) PayChannel(ctx context.Context, shop string) (Channel, error) {
 	c.mu.Lock()
-	if c.channelID > 0 && time.Now().Unix()-c.channelAt < 600 {
-		id := c.channelID
+	if c.channel.ID > 0 && time.Now().Unix()-c.channelAt < 600 {
+		ch := c.channel
 		c.mu.Unlock()
-		return id, nil
+		return ch, nil
 	}
 	c.mu.Unlock()
 	var list []Channel
 	if err := c.post(ctx, "/shopApi/Shop/getUserChannel", map[string]any{"token": shop}, "", &list); err != nil {
 		if strings.Contains(err.Error(), "Attempt to read property") {
-			return 0, &apiError{"上游店铺支付通道未开通"}
+			return Channel{}, &apiError{"上游店铺支付通道未开通"}
 		}
-		return 0, err
+		return Channel{}, err
 	}
-	var pick int64
+	var pick Channel
 	for _, ch := range list {
 		if ch.Status != 1 || ch.CustomStatus != 1 {
 			continue
 		}
-		if pick == 0 {
-			pick = ch.ID
+		if pick.ID == 0 {
+			pick = ch
 		}
-		if strings.Contains(ch.Name, "支付宝") || strings.Contains(ch.ShowName, "支付宝") {
-			pick = ch.ID
+		name := strings.ToLower(ch.Name + " " + ch.ShowName)
+		if strings.Contains(name, "微信") || strings.Contains(name, "weixin") || strings.Contains(name, "wxpay") {
+			pick = ch
 			break
 		}
 	}
-	if pick == 0 {
-		return 0, &apiError{"上游没有可用的支付宝支付通道"}
+	if pick.ID == 0 {
+		return Channel{}, &apiError{"上游没有可用的支付通道"}
 	}
 	c.mu.Lock()
-	c.channelID, c.channelAt = pick, time.Now().Unix()
+	c.channel, c.channelAt = pick, time.Now().Unix()
 	c.mu.Unlock()
 	return pick, nil
 }
@@ -483,7 +483,7 @@ type PayOrderResult struct {
 	PayURL      string
 }
 
-// CreateOrder 上游买家下单（微信支付通道），返回平台订单号与收银台地址。
+// CreateOrder 上游买家下单，返回平台订单号与收银台地址。
 func (c *Client) CreateOrder(ctx context.Context, goodsKey string, quantity, channelID int64, contact, queryPwd string) (PayOrderResult, error) {
 	var raw struct {
 		TradeNo     string  `json:"trade_no"`
@@ -502,20 +502,18 @@ func (c *Client) CreateOrder(ctx context.Context, goodsKey string, quantity, cha
 	return PayOrderResult{TradeNo: raw.TradeNo, TotalAmount: yuanFen(raw.TotalAmount), PayURL: raw.PayURL}, nil
 }
 
-// FetchQRCode 提取支付宝扫码付二维码内容。
-// 流程：GET payurl 收银台（自动提交表单）→ POST openapi.alipay.com 网关 →
-// 302 到 excashier 收银页 → 页面内嵌 <input name="qrCode" value="https://qr.alipay.com/...">。
+// FetchQRCode 提取收银台二维码内容。
+// GET payment 302 到 /payApi/<通道>/pay.html 通用收银页，页面二维码
+// （generateQrcode?str=）编码的是收银页自身 URL（多重 URL 编码）。
 func (c *Client) FetchQRCode(ctx context.Context, tradeNo string) (string, error) {
-	jar, _ := cookiejar.New(nil)
-	cli := &http.Client{Timeout: 30 * time.Second, Jar: jar}
-	ua := "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+	cli := &http.Client{Timeout: 30 * time.Second}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
 		c.base+"/shopApi/Pay/payment?trade_no="+tradeNo, nil)
 	if err != nil {
 		return "", err
 	}
-	req.Header.Set("User-Agent", ua)
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36")
 	resp, err := cli.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("获取收银台页面失败: %w", err)
@@ -525,42 +523,30 @@ func (c *Client) FetchQRCode(ctx context.Context, tradeNo string) (string, error
 	if err != nil {
 		return "", err
 	}
-	action := formActionRe.FindSubmatch(body)
-	if len(action) < 2 {
-		return "", fmt.Errorf("收银台页面未找到支付表单")
+	if m := genQrStrRe.FindSubmatch(body); len(m) == 2 {
+		if s := urlUnescapeMulti(string(m[1])); s != "" {
+			return s, nil
+		}
 	}
-	form := url.Values{}
-	for _, m := range formFieldRe.FindAllSubmatch(body, -1) {
-		form.Set(string(m[1]), string(m[2]))
+	if strings.HasPrefix(resp.Request.URL.Path, "/payApi/") {
+		return resp.Request.URL.String(), nil
 	}
-	req2, err := http.NewRequestWithContext(ctx, http.MethodPost, string(action[1]),
-		strings.NewReader(form.Encode()))
-	if err != nil {
-		return "", err
-	}
-	req2.Header.Set("User-Agent", ua)
-	req2.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	resp2, err := cli.Do(req2)
-	if err != nil {
-		return "", fmt.Errorf("收银台跳转失败: %w", err)
-	}
-	body2, err := io.ReadAll(io.LimitReader(resp2.Body, 2<<20))
-	resp2.Body.Close()
-	if err != nil {
-		return "", err
-	}
-	m := qrInputRe.FindSubmatch(body2)
-	if len(m) < 2 {
-		return "", fmt.Errorf("收银台页面未找到二维码")
-	}
-	return string(m[1]), nil
+	return "", fmt.Errorf("收银台页面未找到二维码")
 }
 
-var (
-	formActionRe = regexp.MustCompile(`action='([^']+)'`)
-	formFieldRe  = regexp.MustCompile(`name='([^']+)' value='([^']*)'`)
-	qrInputRe    = regexp.MustCompile(`name="qrCode"\s+[^>]*value="([^"]+)"`)
-)
+var genQrStrRe = regexp.MustCompile(`generateQrcode\.html\?str=([^"'&\s]+)`)
+
+// urlUnescapeMulti 多重 URL 解码（上游收银页 str 参数被编码了多次）。
+func urlUnescapeMulti(s string) string {
+	for i := 0; i < 3 && strings.Contains(s, "%"); i++ {
+		d, err := url.PathUnescape(s)
+		if err != nil || d == s {
+			break
+		}
+		s = d
+	}
+	return s
+}
 
 // OrderPaid 上游订单是否已支付（Pay/query：未支付 code=0，已支付 code=1）。
 func (c *Client) OrderPaid(ctx context.Context, tradeNo string) (bool, error) {

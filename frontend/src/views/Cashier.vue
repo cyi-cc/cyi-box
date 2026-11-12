@@ -12,7 +12,7 @@ const tradeNo = String(route.params.tradeNo ?? '')
 const info = ref<{
   tradeNo: string; outTradeNo: string; subject: string
   money: number; status: number; payurl: string; qrcode: string
-  cards: string; expiredAt: number
+  channel: string; cards: string; expiredAt: number
 } | null>(null)
 const qrDataUrl = ref('')
 const notFound = ref(false)
@@ -60,6 +60,10 @@ const remainText = computed(() => {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 })
 const remainPct = computed(() => Math.min(100, (remainSec.value / 1800) * 100))
+
+const chMeta = computed(() => info.value?.channel === 'wxpay'
+  ? { name: '微信', badge: '微', color: '#07c160' }
+  : { name: '支付宝', badge: '支', color: '#1677ff' })
 
 async function load() {
   const r = await client.paySvc.cashierInfo({ tradeNo })
@@ -115,14 +119,14 @@ function fen2yuan(fen: number): string { return (fen / 100).toFixed(2) }
 
         <div v-if="info!.status === 0" class="cash-qr-area">
           <div class="cash-qr-frame">
-            <img v-if="qrDataUrl" :src="qrDataUrl" class="cash-qr" alt="支付宝扫码" />
+            <img v-if="qrDataUrl" :src="qrDataUrl" class="cash-qr" :alt="chMeta.name + '扫码'" />
             <div v-else class="cash-qr-empty">二维码生成中…</div>
             <div class="cash-qr-corner tl" /><div class="cash-qr-corner tr" />
             <div class="cash-qr-corner bl" /><div class="cash-qr-corner br" />
           </div>
           <div class="cash-qr-tip">
-            <span class="cash-alipay-badge">支</span>
-            打开<b>支付宝</b>扫一扫，向「池易」付款
+            <span class="cash-ch-badge" :style="{ background: chMeta.color }">{{ chMeta.badge }}</span>
+            打开<b>{{ chMeta.name }}</b>扫一扫，向「池易」付款
           </div>
           <div class="cash-countdown">
             <n-icon><TimeOutline /></n-icon>
@@ -185,7 +189,7 @@ function fen2yuan(fen: number): string { return (fen / 100).toFixed(2) }
   font-size: 14px; font-weight: 700; color: var(--cb-ink, #1c1b1a);
   display: flex; align-items: center; gap: 8px;
 }
-.cash-alipay-badge {
+.cash-ch-badge {
   display: inline-flex; align-items: center; justify-content: center;
   width: 24px; height: 24px; background: #1677ff; color: #fff;
   border-radius: 6px; font-size: 14px; font-weight: 900;

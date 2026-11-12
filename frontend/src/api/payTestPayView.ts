@@ -3,5 +3,6 @@ export default interface payTestPayView {
   payurl:string
   qrcode:string
   money:number
+  channel:string
   cashier:string
 }

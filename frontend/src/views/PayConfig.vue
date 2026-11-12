@@ -101,7 +101,7 @@ onActivated(() => { void loadStatus() })
 const testFen = ref<number>(1)
 const testing = ref(false)
 const payModal = ref(false)
-const payOrder = ref<{ tradeNo: string; money: number; status: number } | null>(null)
+const payOrder = ref<{ tradeNo: string; money: number; status: number; channel: string } | null>(null)
 const payQrImg = ref('')
 const payCards = ref('')
 let payAbort: AbortController | null = null
@@ -112,7 +112,7 @@ async function testPay() {
     const money = (testFen.value / 100).toFixed(2)
     const r = await client.paySvc.testPay({ money })
     if (r.status === 0 && r.data) {
-      payOrder.value = { tradeNo: r.data.tradeNo, money: r.data.money, status: 0 }
+      payOrder.value = { tradeNo: r.data.tradeNo, money: r.data.money, status: 0, channel: r.data.channel || 'wxpay' }
       payCards.value = ''
       if (r.data.qrcode) {
         payQrImg.value = await QRCode.toDataURL(r.data.qrcode, { width: 220, margin: 1 })
@@ -282,7 +282,7 @@ function fen2yuan(fen: number): string { return (fen / 100).toFixed(2) }
           </n-form-item>
         </n-form>
         <n-button type="primary" :loading="testing" @click="testPay">发起支付</n-button>
-        <div class="hint-line">走真实上游下单链路，弹窗出支付宝付款码，实时推送支付结果。</div>
+        <div class="hint-line">走真实上游下单链路，弹窗出扫码付款码，实时推送支付结果。</div>
       </div>
     </div>
 
@@ -294,8 +294,8 @@ function fen2yuan(fen: number): string { return (fen / 100).toFixed(2) }
         <div class="cm-no mono">{{ payOrder.tradeNo }}</div>
 
         <div v-if="payOrder.status === 0" class="cm-body">
-          <img v-if="payQrImg" :src="payQrImg" class="cm-qr" alt="支付宝扫码" />
-          <div class="cm-tip">请使用 <b>支付宝</b> 扫码支付</div>
+          <img v-if="payQrImg" :src="payQrImg" class="cm-qr" alt="扫码支付" />
+          <div class="cm-tip">请使用 <b>{{ payOrder.channel === 'wxpay' ? '微信' : '支付宝' }}</b> 扫码支付</div>
         </div>
         <div v-else-if="payOrder.status === 1" class="cm-body">
           <n-icon :size="52" color="#18a058"><CheckmarkCircleOutline /></n-icon>

@@ -127,10 +127,10 @@ func epayCreateOrder(c *fun.RouteCtx, st *store.Store, up *payx.Client) (epayOrd
 	}
 	channel := strings.TrimSpace(c.Param("type"))
 	if channel == "" {
-		channel = "alipay"
+		channel = "wxpay"
 	}
-	if channel != "alipay" {
-		return out, errParam("当前仅支持支付宝支付（alipay）")
+	if channel != "wxpay" {
+		return out, errParam("当前仅支持微信支付（wxpay）")
 	}
 	outTradeNo := strings.TrimSpace(c.Param("out_trade_no"))
 	if outTradeNo == "" || len(outTradeNo) > 64 {

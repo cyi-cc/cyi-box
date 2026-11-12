@@ -325,14 +325,14 @@ func (s *PaySvc) TestPay(d dto.PayTestPayDto) (dto.PayTestPayView, error) {
 		return dto.PayTestPayView{}, fun.Error(4001, "金额非法（0-2000 元）")
 	}
 	order, err := createPayOrder(s.Store, s.Up, createPayOrderIn{
-		Channel: "alipay", Subject: "测试支付", Money: money,
+		Channel: "wxpay", Subject: "测试支付", Money: money,
 	})
 	if err != nil {
 		return dto.PayTestPayView{}, fun.Error(5000, err.Error())
 	}
 	return dto.PayTestPayView{
 		TradeNo: order.TradeNo, Payurl: order.Payurl, Qrcode: order.Qrcode,
-		Money: order.Money, Cashier: "/cashier/" + order.TradeNo,
+		Money: order.Money, Channel: order.Channel, Cashier: "/cashier/" + order.TradeNo,
 	}, nil
 }
 
@@ -615,14 +615,15 @@ func placeUpstream(st *store.Store, up *payx.Client, o *db.PayOrder, goodsID int
 	if shop == "" {
 		return fmt.Errorf("上游店铺未配置")
 	}
-	channelID, err := up.AlipayChannelID(ctx, shop)
+	ch, err := up.PayChannel(ctx, shop)
 	if err != nil {
 		return fmt.Errorf("上游支付通道不可用：%v", err)
 	}
+	o.Channel = epayChannel(ch)
 	contact, queryPwd := payx.RandContact(), payx.RandQueryPwd()
 
 	unlock := up.StockLock()
-	res, err := placeUnderLock(ctx, up, goodsID, goodsKey, quantity, channelID, contact, queryPwd)
+	res, err := placeUnderLock(ctx, up, goodsID, goodsKey, quantity, ch.ID, contact, queryPwd)
 	unlock()
 	if err != nil {
 		return err
@@ -635,7 +636,7 @@ func placeUpstream(st *store.Store, up *payx.Client, o *db.PayOrder, goodsID int
 	if err := st.Q().SetPayOrderUpstream(ctx, db.SetPayOrderUpstreamParams{
 		UpstreamTradeNo: res.TradeNo, GoodsKey: goodsKey, Quantity: quantity,
 		UnitPrice: payUnitFen, Payurl: res.PayURL, BuyerContact: contact,
-		QueryPwd: queryPwd, ID: o.ID,
+		QueryPwd: queryPwd, Channel: o.Channel, ID: o.ID,
 	}); err != nil {
 		return fmt.Errorf("回写上游订单失败")
 	}
@@ -646,6 +647,15 @@ func placeUpstream(st *store.Store, up *payx.Client, o *db.PayOrder, goodsID int
 		log.Printf("[pay] 订单 %s 取二维码失败: %v（payurl 仍可用）", o.TradeNo, qrErr)
 	}
 	return nil
+}
+
+// epayChannel 上游通道名 → 易支付渠道标识（上游通道可能调整，以实际选中为准）。
+func epayChannel(ch payx.Channel) string {
+	n := strings.ToLower(ch.Name + " " + ch.ShowName)
+	if strings.Contains(n, "支付宝") || strings.Contains(n, "alipay") {
+		return "alipay"
+	}
+	return "wxpay"
 }
 
 // placeUnderLock 持锁执行：库存不足先补齐（补到 max(10w, 当前+需求)）再下单。

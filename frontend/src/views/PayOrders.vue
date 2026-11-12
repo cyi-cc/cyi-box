@@ -132,7 +132,7 @@ async function copyNo(o: payOrderView) {
           <span class="c-no mono">{{ o.tradeNo }}</span>
           <span class="c-name">{{ o.subject }}</span>
           <span class="c-money mono">¥{{ fen2yuan(o.money) }}</span>
-          <span class="c-ch"><span class="ch-chip">支付宝</span></span>
+          <span class="c-ch"><span class="ch-chip" :class="{ wx: o.channel === 'wxpay' }">{{ o.channel === 'wxpay' ? '微信' : '支付宝' }}</span></span>
           <span class="c-st">
             <span class="st-chip" :class="metaOf(o.status).cls">
               <n-icon :size="12">
@@ -196,6 +196,7 @@ async function copyNo(o: payOrderView) {
   font-size: 11px; font-weight: 800; padding: 1px 8px;
   border: 2px solid var(--cb-ink); border-radius: 6px; background: var(--cb-mint);
 }
+.ch-chip.wx { background: #c8f0d4; }
 .st-chip {
   display: inline-flex; align-items: center; gap: 4px;
   font-size: 11px; font-weight: 800; padding: 1px 8px;

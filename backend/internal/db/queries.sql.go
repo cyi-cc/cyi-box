@@ -2716,7 +2716,7 @@ func (q *Queries) SetPayOrderStatus(ctx context.Context, arg SetPayOrderStatusPa
 }
 
 const setPayOrderUpstream = `-- name: SetPayOrderUpstream :exec
-UPDATE pay_orders SET upstream_trade_no = ?, goods_key = ?, quantity = ?, unit_price = ?, payurl = ?, buyer_contact = ?, query_pwd = ? WHERE id = ?
+UPDATE pay_orders SET upstream_trade_no = ?, goods_key = ?, quantity = ?, unit_price = ?, payurl = ?, buyer_contact = ?, query_pwd = ?, channel = ? WHERE id = ?
 `
 
 type SetPayOrderUpstreamParams struct {
@@ -2727,6 +2727,7 @@ type SetPayOrderUpstreamParams struct {
 	Payurl          string
 	BuyerContact    string
 	QueryPwd        string
+	Channel         string
 	ID              int64
 }
 
@@ -2739,6 +2740,7 @@ func (q *Queries) SetPayOrderUpstream(ctx context.Context, arg SetPayOrderUpstre
 		arg.Payurl,
 		arg.BuyerContact,
 		arg.QueryPwd,
+		arg.Channel,
 		arg.ID,
 	)
 	return err

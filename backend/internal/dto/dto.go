@@ -598,6 +598,7 @@ type PayTestPayView struct {
 	Payurl    string
 	Qrcode    string
 	Money     int64
+	Channel   string
 	Cashier   string
 }
 
