@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>cyi-box 滑块验证码 · 接入测试</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f7f4ec; color: #1d1d1b; padding: 24px;
+    display: flex; justify-content: center;
+  }
+  .wrap { width: 100%; max-width: 560px; display: flex; flex-direction: column; gap: 14px; }
+  .card {
+    background: #fff; border: 2.5px solid #1d1d1b; border-radius: 14px;
+    padding: 16px 18px; box-shadow: 4px 4px 0 #1d1d1b;
+  }
+  h1 { font-size: 18px; font-weight: 900; }
+  .sub { font-size: 12px; color: #8a8577; font-weight: 700; margin-top: 2px; }
+  label { display: block; font-size: 12px; font-weight: 800; margin: 10px 0 4px; }
+  input {
+    width: 100%; border: 2px solid #1d1d1b; border-radius: 8px;
+    padding: 8px 10px; font-size: 13px; font-family: Consolas, monospace; background: #fff;
+  }
+  input:focus { outline: 2px solid #ec5b13; outline-offset: -1px; }
+  .row { display: flex; gap: 10px; }
+  .row > div { flex: 1; }
+  button {
+    border: 2.5px solid #1d1d1b; border-radius: 10px; background: #ffd84d;
+    padding: 9px 18px; font-size: 14px; font-weight: 900; cursor: pointer;
+    box-shadow: 3px 3px 0 #1d1d1b; transition: transform .05s;
+  }
+  button:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #1d1d1b; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.ghost { background: #fff; }
+  #stage { display: flex; justify-content: center; padding: 8px 0; min-height: 230px; align-items: center; }
+  #token-box {
+    font-family: Consolas, monospace; font-size: 12px; word-break: break-all;
+    background: #f1eee8; border: 2px dashed #1d1d1b; border-radius: 8px;
+    padding: 10px; min-height: 44px;
+  }
+  .ok-tag { color: #0a7d3b; font-weight: 900; }
+  .err-tag { color: #c0392b; font-weight: 900; }
+  pre {
+    background: #1d1d1b; color: #ffd84d; border-radius: 10px; padding: 12px;
+    font-size: 12px; overflow-x: auto; line-height: 1.7; max-height: 220px; overflow-y: auto;
+  }
+  .actions { display: flex; gap: 10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>滑块验证码 · 接入测试页</h1>
+    <div class="sub">iframe 出题 → postMessage 拿 token → 后端 check 核销</div>
+
+    <div class="row">
+      <div>
+        <label>服务地址</label>
+        <input id="origin" value="https://box.cyi.cc" placeholder="https://box.cyi.cc">
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>sitekey（pk_）</label>
+        <input id="sitekey" value="pk_78f7c935b788e2b4" placeholder="pk_xxx">
+      </div>
+      <div>
+        <label>secret（sk_，仅本地测试用）</label>
+        <input id="secret" placeholder="sk_xxx" autocomplete="off">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div id="stage"><span style="color:#8a8577;font-size:13px;font-weight:700">加载中…</span></div>
+    <div class="actions" style="margin-top:8px">
+      <button class="ghost" onclick="reloadWidget()">换一题</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <label style="margin-top:0">postMessage 拿到的 token（2 分钟内一次性）</label>
+    <div id="token-box"><span style="color:#8a8577">还没拿到，先拖一下滑块</span></div>
+    <div class="actions" style="margin-top:10px">
+      <button id="checkBtn" disabled onclick="doCheck()">后端核销 check</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <label style="margin-top:0">结果 / 日志</label>
+    <pre id="out">// 等待操作…</pre>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id)
+let token = ''
+
+function log(s) {
+  const t = new Date().toTimeString().slice(0, 8)
+  $('out').textContent = `[${t}] ${s}\n` + $('out').textContent
+}
+
+function widgetUrl() {
+  return $('origin').value.replace(/\/$/, '') + '/captcha/widget?sitekey=' + encodeURIComponent($('sitekey').value)
+}
+
+function reloadWidget() {
+  token = ''
+  $('checkBtn').disabled = true
+  $('token-box').innerHTML = '<span style="color:#8a8577">还没拿到，先拖一下滑块</span>'
+  $('stage').innerHTML = ''
+  const f = document.createElement('iframe')
+  f.src = widgetUrl()
+  f.style.cssText = 'border:0;width:304px;height:222px;overflow:hidden'
+  f.scrolling = 'no'
+  $('stage').appendChild(f)
+  log('重新出题 ' + f.src)
+}
+
+addEventListener('message', e => {
+  const expected = $('origin').value.replace(/\/$/, '')
+  if (e.origin !== expected) return
+  if (e.data && e.data.type === 'cyi-captcha') {
+    token = e.data.token
+    $('token-box').innerHTML = '<span class="ok-tag">✓ </span>' + token
+    $('checkBtn').disabled = false
+    log('postMessage 收到 token: ' + token)
+  }
+})
+
+async function doCheck() {
+  if (!token) return
+  const secret = $('secret').value.trim()
+  if (!secret) { log('⚠ 先填 secret（sk_）'); return }
+  const url = $('origin').value.replace(/\/$/, '') +
+    '/v1/captcha/check?secret=' + encodeURIComponent(secret) +
+    '&token=' + encodeURIComponent(token)
+  $('checkBtn').disabled = true
+  try {
+    const r = await fetch(url)
+    const j = await r.json()
+    log('check 返回: ' + JSON.stringify(j))
+    if (j.code === 1) {
+      $('token-box').innerHTML = '<span class="ok-tag">✓ 核销通过，token 已销毁</span>'
+    } else {
+      $('token-box').innerHTML = '<span class="err-tag">✗ ' + (j.msg || '核销失败') + '</span>'
+    }
+  } catch (e) {
+    log('check 请求失败: ' + e.message + '（跨域？服务端没开 CORS 的话换 curl 测）')
+  }
+}
+
+reloadWidget()
+</script>
+</body>
+</html>

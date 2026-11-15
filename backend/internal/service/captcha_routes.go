@@ -154,6 +154,8 @@ func CaptchaCheckHandler(st *store.Store) fun.RouteHandler {
 }
 
 func capJSON(c *fun.RouteCtx, code int, msg string, extra map[string]any) error {
+	// verify/check 均无凭证交互，放开 CORS 方便接入方在浏览器里调试
+	c.RequestCtx.Response.Header.Set("Access-Control-Allow-Origin", "*")
 	obj := map[string]any{"code": code, "msg": msg}
 	for k, v := range extra {
 		obj[k] = v
