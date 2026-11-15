@@ -77,8 +77,12 @@ function embedSnippet(k: captchaKeyView): string {
 addEventListener('message', e => {
   if (e.origin !== '${location.origin}') return
   if (e.data && e.data.type === 'cyi-captcha') {
-    // e.data.token 随表单提交给你的后端
-    console.log('captcha token:', e.data.token)
+    if (e.data.ok) {
+      // e.data.token 随表单提交给你的后端
+      console.log('captcha token:', e.data.token)
+    } else {
+      // 答错：widget 已自动换题，清掉旧 token 禁止提交
+    }
   }
 })
 <\/script>`

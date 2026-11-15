@@ -123,12 +123,19 @@ function reloadWidget() {
 addEventListener('message', e => {
   const expected = $('origin').value.replace(/\/$/, '')
   if (e.origin !== expected) return
-  if (e.data && e.data.type === 'cyi-captcha') {
-    token = e.data.token
-    $('token-box').innerHTML = '<span class="ok-tag">✓ </span>' + token
-    $('checkBtn').disabled = false
-    log('postMessage 收到 token: ' + token)
+  if (!e.data || e.data.type !== 'cyi-captcha') return
+  if (e.data.ok === false) {
+    // 答错：清状态禁止提交，widget 会自己换题
+    token = ''
+    $('checkBtn').disabled = true
+    $('token-box').innerHTML = '<span class="err-tag">✗ 验证失败，已自动换题</span>'
+    log('postMessage 收到 fail：滑块没对齐，widget 自动刷新中')
+    return
   }
+  token = e.data.token
+  $('token-box').innerHTML = '<span class="ok-tag">✓ </span>' + token
+  $('checkBtn').disabled = false
+  log('postMessage 收到 token: ' + token)
 })
 
 async function doCheck() {

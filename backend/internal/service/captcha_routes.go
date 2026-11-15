@@ -236,8 +236,10 @@ done=true;
 fetch('/v1/captcha/verify',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'id='+encodeURIComponent(ID)+'&x='+x})
 .then(function(r){return r.json()}).then(function(d){
 if(d&&d.code===1){tr.className='track ok';st.className='stage ok';tip.textContent='验证通过';
-try{window.parent.postMessage({type:'cyi-captcha',token:d.token},porigin())}catch(e){}}
-else{tr.className='track err shake';tip.textContent='没对齐，再来一次';setTimeout(function(){location.reload()},700)}
+try{window.parent.postMessage({type:'cyi-captcha',ok:true,token:d.token},porigin())}catch(e){}}
+else{tr.className='track err shake';tip.textContent='没对齐，再来一次';
+try{window.parent.postMessage({type:'cyi-captcha',ok:false},porigin())}catch(e){}
+setTimeout(function(){location.reload()},700)}
 }).catch(function(){done=false;setX(0)});
 }
 })();
