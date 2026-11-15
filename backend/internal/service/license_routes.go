@@ -13,22 +13,45 @@ import (
 	"github.com/cyi-cc/cyi-box/backend/internal/store"
 )
 
+// licenseLog 记一条 /v1/license 校验流水（顺带裁剪：超 3 天或超最近 500 条的删掉）。
+func licenseLog(st *store.Store, l db.InsertLicenseLogParams) {
+	l.CreatedAt = time.Now().Unix()
+	_ = st.Q().InsertLicenseLog(context.Background(), l)
+	_ = st.Q().TrimLicenseLogs(context.Background(), l.CreatedAt-3*86400)
+}
+
 func LicenseVerifyHandler(st *store.Store) fun.RouteHandler {
 	return func(c *fun.RouteCtx) error {
+		ip := c.RequestCtx.RemoteIP().String()
 		appid := strings.TrimSpace(c.Param("appid"))
 		card := strings.ToUpper(strings.TrimSpace(c.Param("card")))
 		domain := normalizeDomain(c.Param("domain"))
+		// fail 记一条失败流水并返回 code:0
+		fail := func(appID int64, msg string) error {
+			licenseLog(st, db.InsertLicenseLogParams{
+				AppID: appID, Appid: appid, Card: card, Event: "verify",
+				Domain: domain, Ip: ip, Msg: msg,
+			})
+			return licenseJSON(c, 0, msg, nil)
+		}
+		ok := func(appID int64, event, msg string, extra map[string]any) error {
+			licenseLog(st, db.InsertLicenseLogParams{
+				AppID: appID, Appid: appid, Card: card, Event: event,
+				Ok: 1, Domain: domain, Ip: ip, Msg: msg,
+			})
+			return licenseJSON(c, 1, msg, extra)
+		}
 		if appid == "" || card == "" || domain == "" {
-			return licenseJSON(c, 0, "缺少参数：appid / card / domain", nil)
+			return fail(0, "缺少参数：appid / card / domain")
 		}
 		ctx := context.Background()
 		app, err := st.Q().GetLicenseAppByAppid(ctx, appid)
 		if err != nil || app.Enabled != 1 {
-			return licenseJSON(c, 0, "项目不存在或已停用", nil)
+			return fail(0, "项目不存在或已停用")
 		}
 		lc, err := st.Q().GetLicenseCard(ctx, db.GetLicenseCardParams{AppID: app.ID, Card: card})
 		if err != nil {
-			return licenseJSON(c, 0, "卡密无效", nil)
+			return fail(app.ID, "卡密无效")
 		}
 		now := time.Now().Unix()
 		if lc.ActivatedAt == 0 {
@@ -40,19 +63,23 @@ func LicenseVerifyHandler(st *store.Store) fun.RouteHandler {
 			if err := st.Q().ActivateLicenseCard(ctx, db.ActivateLicenseCardParams{
 				Domain: domain, ActivatedAt: now, ExpiresAt: expires, ID: lc.ID,
 			}); err != nil {
-				return licenseJSON(c, 0, "激活失败", nil)
+				return fail(app.ID, "激活失败")
 			}
-			return licenseJSON(c, 1, "激活成功", map[string]any{
+			return ok(app.ID, "activate", "激活成功", map[string]any{
 				"domain": domain, "hours": lc.Hours, "expires_at": expires,
 			})
 		}
 		if lc.Domain != domain {
-			return licenseJSON(c, 0, "卡密已绑定其他域名", nil)
+			return fail(app.ID, "卡密已绑定其他域名")
 		}
 		if lc.ExpiresAt > 0 && lc.ExpiresAt <= now {
+			licenseLog(st, db.InsertLicenseLogParams{
+				AppID: app.ID, Appid: appid, Card: card, Event: "verify",
+				Domain: domain, Ip: ip, Msg: "卡密已过期",
+			})
 			return licenseJSON(c, 0, "卡密已过期", map[string]any{"expires_at": lc.ExpiresAt})
 		}
-		return licenseJSON(c, 1, "验证通过", map[string]any{
+		return ok(app.ID, "verify", "验证通过", map[string]any{
 			"domain": lc.Domain, "hours": lc.Hours, "expires_at": lc.ExpiresAt,
 		})
 	}

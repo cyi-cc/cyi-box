@@ -160,6 +160,21 @@ CREATE TABLE IF NOT EXISTS license_cards (
   created_at   INTEGER NOT NULL
 );
 
+-- 卡密校验流水：/v1/license 每次调用的成败与原因，留最近若干条供排障
+CREATE TABLE IF NOT EXISTS license_logs (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  app_id     INTEGER NOT NULL DEFAULT 0,
+  appid      TEXT NOT NULL DEFAULT '',
+  card       TEXT NOT NULL DEFAULT '',
+  event      TEXT NOT NULL DEFAULT '',
+  ok         INTEGER NOT NULL DEFAULT 0,
+  domain     TEXT NOT NULL DEFAULT '',
+  ip         TEXT NOT NULL DEFAULT '',
+  msg        TEXT NOT NULL DEFAULT '',
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_license_logs_time ON license_logs(created_at);
+
 -- agent 共享记忆库：key 形态 "<project>/<topic>"，跨会话/跨 agent 持久事实
 CREATE TABLE IF NOT EXISTS memories (
   k          TEXT PRIMARY KEY,

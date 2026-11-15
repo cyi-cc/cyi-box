@@ -605,6 +605,19 @@ type LicenseAppsView struct {
 	Items []LicenseAppView
 }
 
+// LicenseLogView 卡密校验流水（排障用最近 500 条）
+type LicenseLogView struct {
+	Id        int64
+	Appid     string
+	Card      string
+	Event     string
+	Ok        bool
+	Domain    string
+	Ip        string
+	Msg       string
+	CreatedAt int64
+}
+
 type MemoryListDto struct {
 	Project string
 	Tag     string

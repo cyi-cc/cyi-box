@@ -327,5 +327,18 @@ VALUES(?, ?, ?, ?, ?, ?, ?);
 SELECT * FROM captcha_logs ORDER BY id DESC LIMIT ?;
 
 -- name: TrimCaptchaLogs :exec
-DELETE FROM captcha_logs WHERE id NOT IN
-(SELECT id FROM captcha_logs ORDER BY id DESC LIMIT 500);
+DELETE FROM captcha_logs WHERE captcha_logs.created_at < ?
+   OR id NOT IN (SELECT id FROM captcha_logs ORDER BY id DESC LIMIT 500);
+
+-- name: InsertLicenseLog :exec
+INSERT INTO license_logs(app_id, appid, card, event, ok, domain, ip, msg, created_at)
+VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+-- name: ListLicenseLogs :many
+SELECT * FROM license_logs
+WHERE (? = 0 OR app_id = ?)
+ORDER BY id DESC LIMIT ?;
+
+-- name: TrimLicenseLogs :exec
+DELETE FROM license_logs WHERE license_logs.created_at < ?
+   OR id NOT IN (SELECT id FROM license_logs ORDER BY id DESC LIMIT 500);

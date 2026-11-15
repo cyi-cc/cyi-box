@@ -6,6 +6,7 @@ import type licenseGenDto from "./licenseGenDto";
 import type licenseGenView from "./licenseGenView";
 import type licenseIdDto from "./licenseIdDto";
 import type licenseListDto from "./licenseListDto";
+import type licenseLogView from "./licenseLogView";
 import type licensePageView from "./licensePageView";
 import type licenseStatsDto from "./licenseStatsDto";
 import type licenseStatsView from "./licenseStatsView";
@@ -30,6 +31,9 @@ export default class licenseSvc {
   }
   async list(dto:licenseListDto, options?: RequestOptions): Promise<result<licensePageView>> {
     return await this.client.request<licensePageView>("licenseSvc", "list", dto, options)
+  }
+  async logs(dto:licenseStatsDto, options?: RequestOptions): Promise<result<licenseLogView[]>> {
+    return await this.client.request<licenseLogView[]>("licenseSvc", "logs", dto, options)
   }
   async saveApp(dto:licenseAppSaveDto, options?: RequestOptions): Promise<result<licenseAppView>> {
     return await this.client.request<licenseAppView>("licenseSvc", "saveApp", dto, options)

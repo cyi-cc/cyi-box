@@ -157,7 +157,7 @@ function fmtTime(ts: number): string {
     <div class="log-sec">
       <div class="log-head">
         <b>调用流水</b>
-        <span class="dim">最近 {{ logs.length }} 条（保留 500）</span>
+        <span class="dim">最近 {{ logs.length }} 条（保留 3 天 / 500 条）</span>
         <n-button size="tiny" quaternary style="margin-left:auto" @click="refresh">刷新</n-button>
       </div>
       <div v-if="logs.length" class="log-list">

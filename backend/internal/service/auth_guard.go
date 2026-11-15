@@ -82,6 +82,7 @@ var endpointPolicies = map[string]authPolicy{
 	"LicenseSvc.Stats":       policyAdmin,
 	"LicenseSvc.Generate":    policyAdmin,
 	"LicenseSvc.Delete":      policyAdmin,
+	"LicenseSvc.Logs":        policyAdmin,
 	"MemorySvc.Projects":     policyAdmin,
 	"MemorySvc.List":         policyAdmin,
 	"MemorySvc.Get":          policyAdmin,

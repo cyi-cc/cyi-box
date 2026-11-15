@@ -111,14 +111,14 @@ type CaptchaLog struct {
 	CreatedAt int64
 }
 
-// LogCaptcha 写一条流水并顺带裁到最近 500 条（排障用，不做长期审计）
+// LogCaptcha 写一条流水并顺带裁剪：超 3 天或超最近 500 条的删掉（排障用，不做长期审计）
 func (s *Store) LogCaptcha(l CaptchaLog) {
 	l.CreatedAt = time.Now().Unix()
 	_ = s.q.InsertCaptchaLog(storeCtx, db.InsertCaptchaLogParams{
 		KeyID: l.KeyID, Sitekey: l.Sitekey, Event: l.Event,
 		Ok: b2i(l.Ok), Ip: l.Ip, Msg: l.Msg, CreatedAt: l.CreatedAt,
 	})
-	_ = s.q.TrimCaptchaLogs(storeCtx)
+	_ = s.q.TrimCaptchaLogs(storeCtx, l.CreatedAt-3*86400)
 }
 
 func (s *Store) ListCaptchaLogs(limit int64) ([]CaptchaLog, error) {
