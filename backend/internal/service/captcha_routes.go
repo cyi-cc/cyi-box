@@ -235,14 +235,16 @@ document.getElementById('re').onclick=function(){location.reload()};
 function porigin(){try{var o=new URL(document.referrer).origin;return /^https?:$/.test(new URL(document.referrer).protocol)?o:'*'}catch(e){return'*'}}
 function send(){
 done=true;
-fetch('/v1/captcha/verify',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'id='+encodeURIComponent(ID)+'&x='+x})
+var ac=new AbortController(),to=setTimeout(function(){ac.abort()},8000);
+fetch('/v1/captcha/verify',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'id='+encodeURIComponent(ID)+'&x='+x,signal:ac.signal})
 .then(function(r){return r.json()}).then(function(d){
+clearTimeout(to);
 if(d&&d.code===1){tr.className='track ok';st.className='stage ok';tip.textContent='验证通过';
 try{window.parent.postMessage({type:'cyi-captcha',ok:true,token:d.token},porigin())}catch(e){}}
 else{tr.className='track err shake';tip.textContent='没对齐，再来一次';
 try{window.parent.postMessage({type:'cyi-captcha',ok:false},porigin())}catch(e){}
 setTimeout(function(){location.reload()},700)}
-}).catch(function(){done=false;setX(0)});
+}).catch(function(){clearTimeout(to);done=false;tip.textContent='网络异常，再拖一次';setX(0)});
 }
 })();
 </script>`)
