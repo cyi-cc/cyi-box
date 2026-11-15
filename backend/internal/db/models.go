@@ -78,19 +78,6 @@ type LicenseCard struct {
 	CreatedAt   int64
 }
 
-type LicenseLog struct {
-	ID        int64
-	AppID     int64
-	Appid     string
-	Card      string
-	Event     string
-	Ok        int64
-	Domain    string
-	Ip        string
-	Msg       string
-	CreatedAt int64
-}
-
 type Memory struct {
 	K         string
 	Content   string

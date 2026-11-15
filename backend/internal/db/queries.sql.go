@@ -948,38 +948,6 @@ func (q *Queries) InsertFile(ctx context.Context, arg InsertFileParams) (int64, 
 	return result.LastInsertId()
 }
 
-const insertLicenseLog = `-- name: InsertLicenseLog :exec
-INSERT INTO license_logs(app_id, appid, card, event, ok, domain, ip, msg, created_at)
-VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
-`
-
-type InsertLicenseLogParams struct {
-	AppID     int64
-	Appid     string
-	Card      string
-	Event     string
-	Ok        int64
-	Domain    string
-	Ip        string
-	Msg       string
-	CreatedAt int64
-}
-
-func (q *Queries) InsertLicenseLog(ctx context.Context, arg InsertLicenseLogParams) error {
-	_, err := q.db.ExecContext(ctx, insertLicenseLog,
-		arg.AppID,
-		arg.Appid,
-		arg.Card,
-		arg.Event,
-		arg.Ok,
-		arg.Domain,
-		arg.Ip,
-		arg.Msg,
-		arg.CreatedAt,
-	)
-	return err
-}
-
 const insertServer = `-- name: InsertServer :execlastid
 INSERT INTO servers(name, host, port, username, auth_type, secret_enc, note, created_at, updated_at)
 VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -1469,52 +1437,6 @@ func (q *Queries) ListLicenseCards(ctx context.Context, arg ListLicenseCardsPara
 			&i.Domain,
 			&i.ActivatedAt,
 			&i.ExpiresAt,
-			&i.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listLicenseLogs = `-- name: ListLicenseLogs :many
-SELECT id, app_id, appid, card, event, ok, domain, ip, msg, created_at FROM license_logs
-WHERE (? = 0 OR app_id = ?)
-ORDER BY id DESC LIMIT ?
-`
-
-type ListLicenseLogsParams struct {
-	Column1 interface{}
-	AppID   int64
-	Limit   int64
-}
-
-func (q *Queries) ListLicenseLogs(ctx context.Context, arg ListLicenseLogsParams) ([]LicenseLog, error) {
-	rows, err := q.db.QueryContext(ctx, listLicenseLogs, arg.Column1, arg.AppID, arg.Limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []LicenseLog{}
-	for rows.Next() {
-		var i LicenseLog
-		if err := rows.Scan(
-			&i.ID,
-			&i.AppID,
-			&i.Appid,
-			&i.Card,
-			&i.Event,
-			&i.Ok,
-			&i.Domain,
-			&i.Ip,
-			&i.Msg,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -2128,16 +2050,6 @@ DELETE FROM captcha_logs WHERE captcha_logs.created_at < ?
 
 func (q *Queries) TrimCaptchaLogs(ctx context.Context, createdAt int64) error {
 	_, err := q.db.ExecContext(ctx, trimCaptchaLogs, createdAt)
-	return err
-}
-
-const trimLicenseLogs = `-- name: TrimLicenseLogs :exec
-DELETE FROM license_logs WHERE license_logs.created_at < ?
-   OR id NOT IN (SELECT id FROM license_logs ORDER BY id DESC LIMIT 500)
-`
-
-func (q *Queries) TrimLicenseLogs(ctx context.Context, createdAt int64) error {
-	_, err := q.db.ExecContext(ctx, trimLicenseLogs, createdAt)
 	return err
 }
 

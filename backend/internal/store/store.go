@@ -57,7 +57,8 @@ func (s *Store) migrate() error {
 	if _, err := s.DB.Exec(`DROP TABLE IF EXISTS proxies;
 DROP TABLE IF EXISTS proxy_regions;
 DROP TABLE IF EXISTS proxy_syncs;
-DROP TABLE IF EXISTS proxy_keys;`); err != nil {
+DROP TABLE IF EXISTS proxy_keys;
+DROP TABLE IF EXISTS license_logs;`); err != nil {
 		return fmt.Errorf("store: drop proxy tables failed: %w", err)
 	}
 	var dummy int64

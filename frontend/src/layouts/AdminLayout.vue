@@ -78,13 +78,21 @@ const menuOptions = computed<MenuOption[]>(() => {
       },
       {
         type: 'group',
+        label: '验证码',
+        key: 'captcha-group',
+        children: [
+          { label: '接入方密钥', key: '/captcha', icon: icon(ShieldCheckmarkOutline) },
+          { label: '调用流水', key: '/captcha/logs', icon: icon(DocumentTextOutline) }
+        ]
+      },
+      {
+        type: 'group',
         label: '系统管理',
         key: 'admin-group',
         children: [
           { label: '服务器', key: '/servers', icon: icon(ServerOutline) },
           { label: '数据库', key: '/dbm', icon: icon(CubeOutline) },
           { label: '记忆库', key: '/memories', icon: icon(BulbOutline) },
-          { label: '验证码', key: '/captcha', icon: icon(ShieldCheckmarkOutline) },
           { label: '系统设置', key: '/settings', icon: icon(SettingsOutline) },
         ]
       }

@@ -169,24 +169,6 @@ func (s *LicenseSvc) Generate(d dto.LicenseGenDto) (dto.LicenseGenView, error) {
 	return dto.LicenseGenView{Cards: cards}, nil
 }
 
-// Logs 最近 100 条卡密校验流水；AppId=0 全部项目
-func (s *LicenseSvc) Logs(d dto.LicenseStatsDto) ([]dto.LicenseLogView, error) {
-	rows, err := s.Store.Q().ListLicenseLogs(context.Background(), db.ListLicenseLogsParams{
-		Column1: d.AppId, AppID: d.AppId, Limit: 100,
-	})
-	if err != nil {
-		return nil, err
-	}
-	out := make([]dto.LicenseLogView, 0, len(rows))
-	for _, r := range rows {
-		out = append(out, dto.LicenseLogView{
-			Id: r.ID, Appid: r.Appid, Card: r.Card, Event: r.Event, Ok: r.Ok == 1,
-			Domain: r.Domain, Ip: r.Ip, Msg: r.Msg, CreatedAt: r.CreatedAt,
-		})
-	}
-	return out, nil
-}
-
 func (s *LicenseSvc) Delete(d dto.LicenseIdDto) (dto.OkView, error) {
 	if err := s.Store.Q().DeleteLicenseCard(context.Background(), d.Id); err != nil {
 		return dto.OkView{}, err

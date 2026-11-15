@@ -11,14 +11,12 @@ import { client } from '../lib/api'
 import { copyText } from '../lib/kit'
 import type licenseCardView from '../api/licenseCardView'
 import type licenseAppView from '../api/licenseAppView'
-import type licenseLogView from '../api/licenseLogView'
 
 const message = useMessage()
 
 const apps = ref<licenseAppView[]>([])
 const appId = ref<number>(0)
 const list = ref<licenseCardView[]>([])
-const logs = ref<licenseLogView[]>([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = 20
@@ -46,8 +44,6 @@ async function refresh() {
   }
   const s = await client.licenseSvc.stats({ appId: appId.value })
   if (s.status === 0 && s.data) stats.value = s.data
-  const lr = await client.licenseSvc.logs({ appId: appId.value })
-  if (lr.status === 0 && lr.data) logs.value = lr.data
 }
 function switchApp(id: number) { appId.value = id; page.value = 1; void refresh() }
 onMounted(refresh)
@@ -184,27 +180,6 @@ function fmtHours(h: number): string {
         </div>
       </div>
 
-      <div class="log-sec">
-        <div class="log-head">
-          <b>校验流水</b>
-          <span class="dim">最近 {{ logs.length }} 条（保留 3 天 / 500 条）</span>
-          <n-button size="tiny" quaternary style="margin-left:auto" @click="refresh">刷新</n-button>
-        </div>
-        <div v-if="logs.length" class="log-list">
-          <div v-for="l in logs" :key="l.id" class="log-row">
-            <span class="log-time mono">{{ fmtTime(l.createdAt) }}</span>
-            <n-tag size="tiny" :bordered="false" :type="l.event === 'activate' ? 'info' : 'default'" class="log-ev">
-              {{ l.event }}
-            </n-tag>
-            <n-tag size="tiny" :bordered="false" :type="l.ok ? 'success' : 'error'">{{ l.ok ? '通过' : '失败' }}</n-tag>
-            <span class="log-card mono">{{ l.card || '—' }}</span>
-            <span class="log-dom mono">{{ l.domain }}</span>
-            <span class="log-ip mono">{{ l.ip }}</span>
-            <span class="log-msg dim">{{ l.msg }}</span>
-          </div>
-        </div>
-        <n-empty v-else description="还没有校验记录" size="small" style="padding:24px 0" />
-      </div>
     </div>
 
     <n-modal v-model:show="genVisible" preset="card" title="生成卡密" style="width: 460px">
@@ -271,18 +246,5 @@ function fmtHours(h: number): string {
   max-height: 300px; overflow: auto; background: var(--cb-cream, #f7f4ec);
   border-radius: 8px; padding: 10px; font-size: 12.5px; margin: 0; line-height: 1.9;
 }
-.log-sec { margin-top: 16px; }
-.log-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 13px; }
-.log-list { display: flex; flex-direction: column; gap: 4px; max-height: 320px; overflow-y: auto; }
-.log-row {
-  display: flex; align-items: center; gap: 8px; font-size: 12px;
-  border: 1.5px solid var(--cb-ink); border-radius: 8px; padding: 5px 10px; background: #fff;
-}
-.log-time { color: var(--cb-ink-3); flex: none; }
-.log-ev { flex: none; }
-.log-card { color: var(--cb-ink-2, #555); flex: none; }
-.log-dom { color: var(--cb-ink-3); flex: none; }
-.log-ip { color: var(--cb-ink-3); flex: none; }
-.log-msg { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 900px) { .stat-grid { grid-template-columns: 1fr 1fr; } .lic-head { display: none; } }
 </style>
