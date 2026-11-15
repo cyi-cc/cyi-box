@@ -31,6 +31,7 @@ type Querier interface {
 	CreateLicenseCard(ctx context.Context, arg CreateLicenseCardParams) error
 	CreatePayOrder(ctx context.Context, arg CreatePayOrderParams) (int64, error)
 	DeleteBookmark(ctx context.Context, arg DeleteBookmarkParams) (int64, error)
+	DeleteCaptchaKey(ctx context.Context, id int64) (int64, error)
 	DeleteDbconn(ctx context.Context, id int64) (int64, error)
 	DeleteFile(ctx context.Context, arg DeleteFileParams) (int64, error)
 	DeleteLicenseApp(ctx context.Context, id int64) error
@@ -44,6 +45,8 @@ type Querier interface {
 	DeleteTool(ctx context.Context, id int64) error
 	DeleteUser(ctx context.Context, id int64) error
 	DeleteVault(ctx context.Context, arg DeleteVaultParams) (int64, error)
+	GetCaptchaKeyBySecret(ctx context.Context, skey string) (CaptchaKey, error)
+	GetCaptchaKeyBySitekey(ctx context.Context, sitekey string) (CaptchaKey, error)
 	GetDbconn(ctx context.Context, id int64) (Dbconn, error)
 	GetFile(ctx context.Context, id int64) (File, error)
 	GetLicenseAppByAppid(ctx context.Context, appid string) (LicenseApp, error)
@@ -62,6 +65,7 @@ type Querier interface {
 	IncPayNotifyAttempts(ctx context.Context, id int64) error
 	IncShareDownloads(ctx context.Context, code string) error
 	InsertBookmark(ctx context.Context, arg InsertBookmarkParams) (int64, error)
+	InsertCaptchaKey(ctx context.Context, arg InsertCaptchaKeyParams) (int64, error)
 	InsertDbconn(ctx context.Context, arg InsertDbconnParams) (int64, error)
 	InsertFile(ctx context.Context, arg InsertFileParams) (int64, error)
 	InsertServer(ctx context.Context, arg InsertServerParams) (int64, error)
@@ -73,6 +77,7 @@ type Querier interface {
 	LicenseCardStats(ctx context.Context, arg LicenseCardStatsParams) (LicenseCardStatsRow, error)
 	LicenseCardStatsAll(ctx context.Context, expiresAt int64) (LicenseCardStatsAllRow, error)
 	ListBookmarks(ctx context.Context, userID int64) ([]Bookmark, error)
+	ListCaptchaKeys(ctx context.Context) ([]CaptchaKey, error)
 	ListDbconns(ctx context.Context) ([]Dbconn, error)
 	ListEnabledTools(ctx context.Context) ([]Tool, error)
 	ListFiles(ctx context.Context, userID int64) ([]File, error)
@@ -95,8 +100,10 @@ type Querier interface {
 	SetPayOrderQrcode(ctx context.Context, arg SetPayOrderQrcodeParams) error
 	SetPayOrderStatus(ctx context.Context, arg SetPayOrderStatusParams) error
 	SetPayOrderUpstream(ctx context.Context, arg SetPayOrderUpstreamParams) error
+	TouchCaptchaKey(ctx context.Context, id int64) error
 	TouchSession(ctx context.Context, arg TouchSessionParams) error
 	UpdateBookmark(ctx context.Context, arg UpdateBookmarkParams) (int64, error)
+	UpdateCaptchaKey(ctx context.Context, arg UpdateCaptchaKeyParams) error
 	UpdateDbconn(ctx context.Context, arg UpdateDbconnParams) (int64, error)
 	UpdateLicenseApp(ctx context.Context, arg UpdateLicenseAppParams) error
 	UpdateServer(ctx context.Context, arg UpdateServerParams) (int64, error)

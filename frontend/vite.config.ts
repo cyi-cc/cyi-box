@@ -13,7 +13,10 @@ export default defineConfig({
         changeOrigin: true,
         ws: true,
         rewrite: p => p.replace(/^\/api/, '')
-      }
+      },
+      // 滑块验证码 iframe 页及其内部 verify 调用（不走 /api 前缀）
+      '/captcha': { target: 'http://localhost:8890', changeOrigin: true },
+      '/v1': { target: 'http://localhost:8890', changeOrigin: true }
     }
   }
 })

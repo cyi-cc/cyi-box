@@ -334,3 +334,24 @@ SELECT COUNT(*) FROM dbconns;
 
 -- name: CountFilesAll :one
 SELECT COUNT(*) FROM files;
+
+-- name: GetCaptchaKeyBySitekey :one
+SELECT * FROM captcha_keys WHERE sitekey = ? AND enabled = 1;
+
+-- name: GetCaptchaKeyBySecret :one
+SELECT * FROM captcha_keys WHERE skey = ? AND enabled = 1;
+
+-- name: ListCaptchaKeys :many
+SELECT * FROM captcha_keys ORDER BY id DESC;
+
+-- name: InsertCaptchaKey :execlastid
+INSERT INTO captcha_keys(sitekey, skey, name, domains, enabled, created_at) VALUES(?, ?, ?, ?, ?, ?);
+
+-- name: UpdateCaptchaKey :exec
+UPDATE captcha_keys SET name = ?, domains = ?, enabled = ? WHERE id = ?;
+
+-- name: DeleteCaptchaKey :execrows
+DELETE FROM captcha_keys WHERE id = ?;
+
+-- name: TouchCaptchaKey :exec
+UPDATE captcha_keys SET used_count = used_count + 1 WHERE id = ?;

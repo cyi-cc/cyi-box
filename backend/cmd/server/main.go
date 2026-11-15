@@ -38,6 +38,9 @@ func main() {
 	if err := st.SeedTools(); err != nil {
 		log.Fatalf("boot: seed tools failed: %v", err)
 	}
+	if err := st.SeedCaptchaKey(); err != nil {
+		log.Fatalf("boot: seed captcha key failed: %v", err)
+	}
 
 	f := fun.GetFun()
 	if len(cfg.CorsOrigins) > 0 {
@@ -61,6 +64,7 @@ func main() {
 		f.BindService(&service.PaySvc{}),
 		f.BindService(&service.LicenseSvc{}),
 		f.BindService(&service.MemorySvc{}),
+		f.BindService(&service.CaptchaSvc{}),
 	} {
 		if err != nil {
 			log.Fatalf("boot: bind service failed: %v", err)
@@ -86,6 +90,11 @@ func main() {
 		f.BindRoute("GET", "/d/*", service.ShareDownloadHandler(st, cfg)),
 		f.BindRoute("GET", "/v1/license", service.LicenseVerifyHandler(st)),
 		f.BindRoute("POST", "/v1/license", service.LicenseVerifyHandler(st)),
+		// 滑块验证码：iframe 嵌入页 + widget 内部 verify + 对方后端 check 核销
+		f.BindRoute("GET", "/captcha/widget", service.CaptchaWidgetHandler(st)),
+		f.BindRoute("POST", "/v1/captcha/verify", service.CaptchaVerifyHandler(st)),
+		f.BindRoute("GET", "/v1/captcha/check", service.CaptchaCheckHandler(st)),
+		f.BindRoute("POST", "/v1/captcha/check", service.CaptchaCheckHandler(st)),
 		// 共享记忆库：MCP 协议端点 + 公开阅读链接
 		f.BindRoute("POST", "/mcp", service.McpHandler(st)),
 		f.BindRoute("GET", "/m", service.MemoryReadHandler(st)),

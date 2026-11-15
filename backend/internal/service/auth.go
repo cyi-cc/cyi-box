@@ -31,6 +31,9 @@ func (s *AuthSvc) Login(d dto.LoginDto) (dto.SessionView, error) {
 	if name == "" || d.Password == "" {
 		return dto.SessionView{}, fun.Error(4001, "请输入用户名和密码")
 	}
+	if !consumeTokenAny(d.CaptchaToken) {
+		return dto.SessionView{}, fun.Error(4001, "滑块验证已失效，请重新验证")
+	}
 	user, err := s.Store.GetUserByName(name)
 	if errors.Is(err, store.ErrNotFound) {
 		return dto.SessionView{}, fun.Error(4001, "用户名或密码错误")

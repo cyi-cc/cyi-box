@@ -1,6 +1,7 @@
 import { Client } from "./client";
 import authSvc from "./authSvc";
 import bookmarkSvc from "./bookmarkSvc";
+import captchaSvc from "./captchaSvc";
 import dashboardSvc from "./dashboardSvc";
 import dbMgrSvc from "./dbMgrSvc";
 import diskSvc from "./diskSvc";
@@ -20,6 +21,7 @@ export class defaultApi extends Client {
   }
   public authSvc: authSvc = new authSvc(this);
   public bookmarkSvc: bookmarkSvc = new bookmarkSvc(this);
+  public captchaSvc: captchaSvc = new captchaSvc(this);
   public dashboardSvc: dashboardSvc = new dashboardSvc(this);
   public dbMgrSvc: dbMgrSvc = new dbMgrSvc(this);
   public diskSvc: diskSvc = new diskSvc(this);

@@ -9,8 +9,9 @@ type OkView struct {
 // ---- auth ----
 
 type LoginDto struct {
-	Name     string
-	Password string
+	Name         string
+	Password     string
+	CaptchaToken string
 }
 
 type UserView struct {
@@ -420,6 +421,27 @@ type CreateShareDto struct {
 
 type IdDto struct {
 	Id int64
+}
+
+// ---- captcha 滑块验证码 ----
+
+type CaptchaKeyView struct {
+	Id        int64
+	Sitekey   string
+	Skey      string
+	Name      string
+	Domains   string
+	Enabled   bool
+	UsedCount int64
+	CreatedAt int64
+}
+
+// CaptchaKeySaveDto Id=0 新建（自动生成 pk_/sk_）；Enabled 可空默认启用
+type CaptchaKeySaveDto struct {
+	Id      int64
+	Name    string
+	Domains string
+	Enabled *int64
 }
 
 // ---- settings ----

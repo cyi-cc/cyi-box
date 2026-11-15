@@ -108,6 +108,17 @@ CREATE TABLE IF NOT EXISTS settings (
   v TEXT NOT NULL DEFAULT ''
 );
 
+CREATE TABLE IF NOT EXISTS captcha_keys (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  sitekey      TEXT NOT NULL UNIQUE,
+  skey         TEXT NOT NULL UNIQUE,
+  name         TEXT NOT NULL DEFAULT '',
+  domains      TEXT NOT NULL DEFAULT '',
+  enabled      INTEGER NOT NULL DEFAULT 1,
+  used_count   INTEGER NOT NULL DEFAULT 0,
+  created_at   INTEGER NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS pay_orders (
   id                INTEGER PRIMARY KEY AUTOINCREMENT,
   trade_no          TEXT NOT NULL UNIQUE,

@@ -143,6 +143,12 @@ const router = createRouter({
           meta: { title: '记忆库', requiresAdmin: true }
         },
         {
+          path: 'captcha',
+          name: 'captcha',
+          component: () => import('../views/Captcha.vue'),
+          meta: { title: '滑块验证码', requiresAdmin: true }
+        },
+        {
           path: 'licenses/apps',
           name: 'license-apps',
           component: () => import('../views/LicenseApps.vue'),

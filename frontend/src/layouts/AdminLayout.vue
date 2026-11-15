@@ -12,7 +12,7 @@ import {
   ServerOutline, CubeOutline, CodeOutline, TimeOutline,
   DocumentTextOutline, SendOutline, ColorPaletteOutline, EyedropOutline, ColorWandOutline,
   CloudOutline, LinkOutline, SettingsOutline, ReceiptOutline, CardOutline, AppsOutline,
-  BulbOutline
+  BulbOutline, ShieldCheckmarkOutline
 } from '@vicons/ionicons5'
 import { useAuthStore } from '../stores/auth'
 
@@ -84,6 +84,7 @@ const menuOptions = computed<MenuOption[]>(() => {
           { label: '服务器', key: '/servers', icon: icon(ServerOutline) },
           { label: '数据库', key: '/dbm', icon: icon(CubeOutline) },
           { label: '记忆库', key: '/memories', icon: icon(BulbOutline) },
+          { label: '验证码', key: '/captcha', icon: icon(ShieldCheckmarkOutline) },
           { label: '系统设置', key: '/settings', icon: icon(SettingsOutline) },
         ]
       }

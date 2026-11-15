@@ -14,6 +14,17 @@ type Bookmark struct {
 	CreatedAt int64
 }
 
+type CaptchaKey struct {
+	ID        int64
+	Sitekey   string
+	Skey      string
+	Name      string
+	Domains   string
+	Enabled   int64
+	UsedCount int64
+	CreatedAt int64
+}
+
 type Dbconn struct {
 	ID          int64
 	Name        string

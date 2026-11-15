@@ -337,6 +337,18 @@ func (q *Queries) DeleteBookmark(ctx context.Context, arg DeleteBookmarkParams) 
 	return result.RowsAffected()
 }
 
+const deleteCaptchaKey = `-- name: DeleteCaptchaKey :execrows
+DELETE FROM captcha_keys WHERE id = ?
+`
+
+func (q *Queries) DeleteCaptchaKey(ctx context.Context, id int64) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteCaptchaKey, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const deleteDbconn = `-- name: DeleteDbconn :execrows
 DELETE FROM dbconns WHERE id = ?
 `
@@ -490,6 +502,46 @@ func (q *Queries) DeleteVault(ctx context.Context, arg DeleteVaultParams) (int64
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+const getCaptchaKeyBySecret = `-- name: GetCaptchaKeyBySecret :one
+SELECT id, sitekey, skey, name, domains, enabled, used_count, created_at FROM captcha_keys WHERE skey = ? AND enabled = 1
+`
+
+func (q *Queries) GetCaptchaKeyBySecret(ctx context.Context, skey string) (CaptchaKey, error) {
+	row := q.db.QueryRowContext(ctx, getCaptchaKeyBySecret, skey)
+	var i CaptchaKey
+	err := row.Scan(
+		&i.ID,
+		&i.Sitekey,
+		&i.Skey,
+		&i.Name,
+		&i.Domains,
+		&i.Enabled,
+		&i.UsedCount,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getCaptchaKeyBySitekey = `-- name: GetCaptchaKeyBySitekey :one
+SELECT id, sitekey, skey, name, domains, enabled, used_count, created_at FROM captcha_keys WHERE sitekey = ? AND enabled = 1
+`
+
+func (q *Queries) GetCaptchaKeyBySitekey(ctx context.Context, sitekey string) (CaptchaKey, error) {
+	row := q.db.QueryRowContext(ctx, getCaptchaKeyBySitekey, sitekey)
+	var i CaptchaKey
+	err := row.Scan(
+		&i.ID,
+		&i.Sitekey,
+		&i.Skey,
+		&i.Name,
+		&i.Domains,
+		&i.Enabled,
+		&i.UsedCount,
+		&i.CreatedAt,
+	)
+	return i, err
 }
 
 const getDbconn = `-- name: GetDbconn :one
@@ -925,6 +977,34 @@ func (q *Queries) InsertBookmark(ctx context.Context, arg InsertBookmarkParams) 
 	return result.LastInsertId()
 }
 
+const insertCaptchaKey = `-- name: InsertCaptchaKey :execlastid
+INSERT INTO captcha_keys(sitekey, skey, name, domains, enabled, created_at) VALUES(?, ?, ?, ?, ?, ?)
+`
+
+type InsertCaptchaKeyParams struct {
+	Sitekey   string
+	Skey      string
+	Name      string
+	Domains   string
+	Enabled   int64
+	CreatedAt int64
+}
+
+func (q *Queries) InsertCaptchaKey(ctx context.Context, arg InsertCaptchaKeyParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, insertCaptchaKey,
+		arg.Sitekey,
+		arg.Skey,
+		arg.Name,
+		arg.Domains,
+		arg.Enabled,
+		arg.CreatedAt,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.LastInsertId()
+}
+
 const insertDbconn = `-- name: InsertDbconn :execlastid
 INSERT INTO dbconns(name, engine, host, port, username, password_enc, database, params, created_at, updated_at)
 VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -1237,6 +1317,42 @@ func (q *Queries) ListBookmarks(ctx context.Context, userID int64) ([]Bookmark, 
 			&i.Url,
 			&i.Icon,
 			&i.Sort,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCaptchaKeys = `-- name: ListCaptchaKeys :many
+SELECT id, sitekey, skey, name, domains, enabled, used_count, created_at FROM captcha_keys ORDER BY id DESC
+`
+
+func (q *Queries) ListCaptchaKeys(ctx context.Context) ([]CaptchaKey, error) {
+	rows, err := q.db.QueryContext(ctx, listCaptchaKeys)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CaptchaKey{}
+	for rows.Next() {
+		var i CaptchaKey
+		if err := rows.Scan(
+			&i.ID,
+			&i.Sitekey,
+			&i.Skey,
+			&i.Name,
+			&i.Domains,
+			&i.Enabled,
+			&i.UsedCount,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -2079,6 +2195,15 @@ func (q *Queries) SetPayOrderUpstream(ctx context.Context, arg SetPayOrderUpstre
 	return err
 }
 
+const touchCaptchaKey = `-- name: TouchCaptchaKey :exec
+UPDATE captcha_keys SET used_count = used_count + 1 WHERE id = ?
+`
+
+func (q *Queries) TouchCaptchaKey(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, touchCaptchaKey, id)
+	return err
+}
+
 const touchSession = `-- name: TouchSession :exec
 UPDATE sessions SET expires_at = ? WHERE token = ?
 `
@@ -2119,6 +2244,27 @@ func (q *Queries) UpdateBookmark(ctx context.Context, arg UpdateBookmarkParams) 
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+const updateCaptchaKey = `-- name: UpdateCaptchaKey :exec
+UPDATE captcha_keys SET name = ?, domains = ?, enabled = ? WHERE id = ?
+`
+
+type UpdateCaptchaKeyParams struct {
+	Name    string
+	Domains string
+	Enabled int64
+	ID      int64
+}
+
+func (q *Queries) UpdateCaptchaKey(ctx context.Context, arg UpdateCaptchaKeyParams) error {
+	_, err := q.db.ExecContext(ctx, updateCaptchaKey,
+		arg.Name,
+		arg.Domains,
+		arg.Enabled,
+		arg.ID,
+	)
+	return err
 }
 
 const updateDbconn = `-- name: UpdateDbconn :execrows

@@ -26,6 +26,7 @@ func main() {
 	f.BindServiceForGen(&service.PaySvc{})
 	f.BindServiceForGen(&service.LicenseSvc{})
 	f.BindServiceForGen(&service.MemorySvc{})
+	f.BindServiceForGen(&service.CaptchaSvc{})
 
 	fun.SetOutput("../frontend/src/api")
 	fun.GenCode(fun.GenTs{})
