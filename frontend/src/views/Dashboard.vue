@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
 import { useRouter } from 'vue-router'
 import { NIcon, NGrid, NGridItem } from 'naive-ui'
 import {
-  ServerOutline, GlobeOutline, KeyOutline, LibraryOutline, CubeOutline,
+  ServerOutline, KeyOutline, LibraryOutline, CubeOutline,
   LockClosedOutline, BookmarkOutline, CloudOutline, TimeOutline, PulseOutline,
   CashOutline, ReceiptOutline, ArrowForwardOutline
 } from '@vicons/ionicons5'
@@ -50,7 +50,6 @@ function fmtTime(ts: number): string {
 
 const modules = computed(() => [
   { name: '服务器', value: stats.value?.servers, sub: '台主机', to: '/servers', icon: ServerOutline, cls: 'i1' },
-  { name: '代理池', value: stats.value == null ? null : `${stats.value.aliveProxies}/${stats.value.proxies}`, sub: '存活/总数', to: '/proxies', icon: GlobeOutline, cls: 'i2' },
   { name: '授权卡密', value: stats.value == null ? null : `${stats.value.licenseActive}/${stats.value.licenseCards}`, sub: '激活/总数', to: '/licenses', icon: KeyOutline, cls: 'i3' },
   { name: '记忆库', value: stats.value?.memories, sub: `${stats.value?.memoryProjects ?? 0} 个项目`, to: '/memories', icon: LibraryOutline, cls: 'i4' },
   { name: '数据库', value: stats.value?.dbconns, sub: '个连接', to: '/dbm', icon: CubeOutline, cls: 'i1' },

@@ -95,18 +95,6 @@ const router = createRouter({
           meta: { title: '分享链接' }
         },
         {
-          path: 'proxies',
-          name: 'proxies',
-          component: () => import('../views/Proxies.vue'),
-          meta: { title: '代理列表' }
-        },
-        {
-          path: 'proxies/extract',
-          name: 'proxy-extract',
-          component: () => import('../views/ProxyExtract.vue'),
-          meta: { title: '提取链接', requiresAdmin: true }
-        },
-        {
           path: 'servers',
           name: 'servers',
           component: () => import('../views/Servers.vue'),

@@ -7,7 +7,6 @@ import diskSvc from "./diskSvc";
 import licenseSvc from "./licenseSvc";
 import memorySvc from "./memorySvc";
 import paySvc from "./paySvc";
-import proxySvc from "./proxySvc";
 import serverSvc from "./serverSvc";
 import settingSvc from "./settingSvc";
 import toolSvc from "./toolSvc";
@@ -27,7 +26,6 @@ export class defaultApi extends Client {
   public licenseSvc: licenseSvc = new licenseSvc(this);
   public memorySvc: memorySvc = new memorySvc(this);
   public paySvc: paySvc = new paySvc(this);
-  public proxySvc: proxySvc = new proxySvc(this);
   public serverSvc: serverSvc = new serverSvc(this);
   public settingSvc: settingSvc = new settingSvc(this);
   public toolSvc: toolSvc = new toolSvc(this);

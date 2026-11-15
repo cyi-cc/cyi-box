@@ -57,7 +57,6 @@ func main() {
 		f.BindService(&service.DbMgrSvc{}),
 		f.BindService(&service.WebSvc{}),
 		f.BindService(&service.DiskSvc{}),
-		f.BindService(&service.ProxySvc{}),
 		f.BindService(&service.SettingSvc{}),
 		f.BindService(&service.PaySvc{}),
 		f.BindService(&service.LicenseSvc{}),
@@ -85,7 +84,6 @@ func main() {
 		f.BindRoute("POST", "/disk/upload", service.DiskUploadHandler(st, cfg)),
 		f.BindRoute("GET", "/disk/download", service.DiskDownloadHandler(st, cfg)),
 		f.BindRoute("GET", "/d/*", service.ShareDownloadHandler(st, cfg)),
-		f.BindRoute("GET", "/v1/proxy", service.ProxyExtractHandler(st)),
 		f.BindRoute("GET", "/v1/license", service.LicenseVerifyHandler(st)),
 		f.BindRoute("POST", "/v1/license", service.LicenseVerifyHandler(st)),
 		// 共享记忆库：MCP 协议端点 + 公开阅读链接
@@ -113,16 +111,11 @@ func main() {
 		}
 	}
 
-	// 代理池后台调度：每小时测活、每日 00:00 全量同步
-	schedCtx, stopSched := context.WithCancel(context.Background())
-	service.StartProxyScheduler(schedCtx, st)
-
 	// 优雅停机：SIGINT/SIGTERM → 等在途请求收尾
 	go func() {
 		ch := make(chan os.Signal, 1)
 		signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
 		<-ch
-		stopSched()
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		_ = f.Shutdown(ctx)

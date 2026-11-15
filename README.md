@@ -1,6 +1,6 @@
 # 池易工作箱 · cyi-box
 
-孟菲斯/新粗野主义风格的个人工作箱 + 管理后台。单二进制 + SQLite 就能跑：支付网关、授权卡密系统、内置 MCP Server 的 AI 共享记忆库、服务器监控、代理池、数据库管理器、网盘、密码箱、书签导航和一套开发者小工具。
+孟菲斯/新粗野主义风格的个人工作箱 + 管理后台。单二进制 + SQLite 就能跑：支付网关、授权卡密系统、内置 MCP Server 的 AI 共享记忆库、服务器监控、数据库管理器、网盘、密码箱、书签导航和一套开发者小工具。
 
 后端 Go + [fun](https://github.com/cyi-cc/fun) 单端点 RPC + sqlc/SQLite，前端 Vue 3 + Vite + Naive UI + ECharts + CodeMirror。
 
@@ -8,9 +8,9 @@
 
 ## 截图
 
-| 仪表盘 | 代理池 |
+| 仪表盘 | 服务器监控 |
 |---|---|
-| ![仪表盘](docs/screenshots/dashboard.png) | ![代理池](docs/screenshots/proxies.png) |
+| ![仪表盘](docs/screenshots/dashboard.png) | ![服务器](docs/screenshots/servers.png) |
 | **订单管理** | **授权卡密** |
 | ![订单](docs/screenshots/pay.png) | ![卡密](docs/screenshots/licenses.png) |
 | **记忆库** | **数据库管理** |
@@ -23,7 +23,6 @@
 - **授权系统**：项目管理（每个项目独立 `appid`）+ 卡密批量生成；`GET /v1/license` 公开校验——首次激活绑域名、异域名拒绝、0 小时=永久、项目停用全卡失效
 - **记忆库 / MCP Server**：`POST /mcp` Streamable HTTP MCP 端点（Bearer 鉴权），`memory_save/get/search/list/delete/projects` 六个工具 + `memory://<key>` resources + `save_context` prompt；FTS5 trigram 全文搜索（中文子串可命中）；`GET /m/<key>?sig=` HMAC 签名阅读链接；Devin/Codex/Claude 共用一座库
 - **服务器管理**：SSH 密码/密钥登录（AES-GCM 加密存储）、CPU/内存/磁盘/网速实时监控、WebSocket 终端（xterm.js）、SFTP 文件管理
-- **代理池**：双数据源每日同步、协议级握手测活（SOCKS4/5、HTTP，裸 TCP 不算数）、大洲→地区分组、提取密钥 `pk_xxx` + `GET /v1/proxy` 随机活代理 API
 - **数据库管理器**：MySQL / PostgreSQL / SQLite 连接（密码加密存储）、库表列结构 → CodeMirror SQL 补全、Ctrl+Enter 执行、JSON/CSV/XLSX 导入导出
 - **网盘**：拖拽上传、限时/永久分享链接（`GET /d/<code>` 免登录）、下载计数
 - **密码箱**：AES-GCM 加密存储、TOTP/otpauth 解析与验证码
@@ -174,32 +173,6 @@ make build          # go build + vite build
 - 查询 20s 超时、行数封顶（默认 500，上限 10000）；按首关键字判定是否结果集语句；
 - 导出 `POST /api/dbm/export`：json/csv/xlsx（结果集最大 5 万行）；
 - 导入 `POST /api/dbm/import`：json 对象数组 / csv / xlsx，首行表头与表列按名交集，逐行插入、坏行跳过计数，上限 1 万行。
-
-## 代理池
-
-- 数据源两个，任一失败不致命（失败源名下的代理本轮不删）：
-  - `GET https://proxy5.net/api/free-proxies.php?v=<30min窗口>`（页面 JS 的接口，直连会被
-    Cloudflare 拦：`proxyx.Fetch` 带浏览器 UA/Referer/gzip，403 时先拉列表页热 cookie 再重试）；
-  - `GET https://rola-ip.co/proxy-api/api/v1/proxies?page=N&pageSize=500`（`proxyx.FetchRola`，
-    页面前端走的公开前缀，免登录，500/页翻到底，大洲由内置国家码映射补）；
-- 多源按 ip:port 合并（协议并集），`proxies.source` 记录归属源；删除规则=没出现在任何成功源里才删；
-- `proxy_regions`（code 如 SG/NL + 中文名 + 大洲）与 `proxies`（region_id 外键，ip:port 唯一）；
-- 同步：启动时若无数据或上次超过 20h 补一次，之后每日 00:00（本地时区）全量 diff——
-  源上消失即删、已存在刷新指标复活、新增入库；`proxy_syncs` 记录 added/removed/updated 与明细
-  （各最多 200 个地址）；
-- 测活：每小时一轮，对距上次检测 >55min 的**全部**代理做**协议级握手**（SOCKS5 greeting+CONNECT /
-  SOCKS4 / HTTP GET 转发——裸 TCP 连通不算数，防透明网关误判），并发 128、4s 超时；
-  失败标 alive=0，拨活即复活（alive=1、fail_count 清零），死记录 7 天后物理清除；
-- 页面 `/proxies`：左栏大洲→地区分类（存活数），右侧筛选/搜索/分页列表，底部同步记录可展开变更明细；
-- `ProxySvc`：List/Regions/Stats 登录即可，Syncs/SyncNow/CheckNow 仅 admin。
-
-## 代理提取 API
-
-- `/proxies/extract` 页生成密钥（`pk_xxx`，存 `proxy_keys` 表，绑定地区或「全部」），删除即吊销；
-- `GET /v1/proxy?key=<密钥>` 免登录：随机抽 15 个存活候选**并行**协议级探活（3s 超时），
-  先活先回一行 `scheme://ip:port`（握手实测协议）（加 `&fmt=url` 返回 `scheme://ip:port`，scheme 为握手实测的
-  socks5h/http/socks4）；死的顺手标 `alive=0`，最多 4 批 / 20s 总超时，全死 503；
-- 每次成功提取 `used_count+1`、`last_used_at` 更新。
 
 ## 系统设置
 

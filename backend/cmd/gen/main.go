@@ -22,7 +22,6 @@ func main() {
 	f.BindServiceForGen(&service.DbMgrSvc{})
 	f.BindServiceForGen(&service.WebSvc{})
 	f.BindServiceForGen(&service.DiskSvc{})
-	f.BindServiceForGen(&service.ProxySvc{})
 	f.BindServiceForGen(&service.SettingSvc{})
 	f.BindServiceForGen(&service.PaySvc{})
 	f.BindServiceForGen(&service.LicenseSvc{})

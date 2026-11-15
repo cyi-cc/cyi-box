@@ -103,63 +103,6 @@ CREATE TABLE IF NOT EXISTS dbconns (
   updated_at   INTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS proxy_regions (
-  id      INTEGER PRIMARY KEY AUTOINCREMENT,
-  code    TEXT NOT NULL UNIQUE,
-  name    TEXT NOT NULL DEFAULT '',
-  zh_name TEXT NOT NULL DEFAULT '',
-  region  TEXT NOT NULL DEFAULT '',
-  slug    TEXT NOT NULL DEFAULT ''
-);
-
-CREATE TABLE IF NOT EXISTS proxies (
-  id              INTEGER PRIMARY KEY AUTOINCREMENT,
-  ip              TEXT NOT NULL,
-  port            INTEGER NOT NULL,
-  protocols       TEXT NOT NULL DEFAULT '',
-  anonymity       TEXT NOT NULL DEFAULT '',
-  source          TEXT NOT NULL DEFAULT '',
-  region_id       INTEGER NOT NULL REFERENCES proxy_regions(id) ON DELETE CASCADE,
-  latency         INTEGER NOT NULL DEFAULT 0,
-  speed           INTEGER NOT NULL DEFAULT 0,
-  uptime          INTEGER NOT NULL DEFAULT 0,
-  alive           INTEGER NOT NULL DEFAULT 1,
-  fail_count      INTEGER NOT NULL DEFAULT 0,
-  last_checked_at INTEGER NOT NULL DEFAULT 0,
-  last_alive_at   INTEGER NOT NULL DEFAULT 0,
-  last_seen_at    INTEGER NOT NULL DEFAULT 0,
-  created_at      INTEGER NOT NULL
-);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_proxies_addr ON proxies(ip, port);
-CREATE INDEX IF NOT EXISTS idx_proxies_region ON proxies(region_id);
-CREATE INDEX IF NOT EXISTS idx_proxies_alive ON proxies(alive);
-CREATE INDEX IF NOT EXISTS idx_proxies_check ON proxies(alive, last_checked_at);
-
-CREATE TABLE IF NOT EXISTS proxy_syncs (
-  id          INTEGER PRIMARY KEY AUTOINCREMENT,
-  started_at  INTEGER NOT NULL,
-  finished_at INTEGER NOT NULL DEFAULT 0,
-  status      TEXT NOT NULL DEFAULT '',
-  source      TEXT NOT NULL DEFAULT '',
-  total       INTEGER NOT NULL DEFAULT 0,
-  added       INTEGER NOT NULL DEFAULT 0,
-  removed     INTEGER NOT NULL DEFAULT 0,
-  updated     INTEGER NOT NULL DEFAULT 0,
-  detail      TEXT NOT NULL DEFAULT '',
-  error       TEXT NOT NULL DEFAULT ''
-);
-
-CREATE TABLE IF NOT EXISTS proxy_keys (
-  id           INTEGER PRIMARY KEY AUTOINCREMENT,
-  kkey         TEXT NOT NULL UNIQUE,
-  name         TEXT NOT NULL DEFAULT '',
-  region_id    INTEGER NOT NULL DEFAULT 0,
-  enabled      INTEGER NOT NULL DEFAULT 1,
-  used_count   INTEGER NOT NULL DEFAULT 0,
-  last_used_at INTEGER NOT NULL DEFAULT 0,
-  created_at   INTEGER NOT NULL
-);
-
 CREATE TABLE IF NOT EXISTS settings (
   k TEXT PRIMARY KEY,
   v TEXT NOT NULL DEFAULT ''

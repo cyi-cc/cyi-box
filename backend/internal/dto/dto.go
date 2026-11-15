@@ -72,8 +72,6 @@ type StatsView struct {
 	LoginTrend     []TrendPoint
 
 	Servers        int64
-	Proxies        int64
-	AliveProxies   int64
 	TodayOrders    int64
 	TodayMoney     int64
 	TotalMoney     int64
@@ -422,97 +420,6 @@ type CreateShareDto struct {
 
 type IdDto struct {
 	Id int64
-}
-
-// ---- proxy 代理池 ----
-
-type ProxyRegionView struct {
-	Id         int64
-	Code       string
-	Name       string
-	ZhName     string
-	Region     string
-	AliveCount int64
-}
-
-type ProxyView struct {
-	Id            int64
-	Ip            string
-	Port          int64
-	Address       string
-	Protocols     string
-	Anonymity     string
-	RegionId      int64
-	RegionCode    string
-	RegionName    string
-	RegionZhName  string
-	Latency       int64
-	Speed         int64
-	Uptime        int64
-	Alive         bool
-	FailCount     int64
-	LastCheckedAt int64
-	LastAliveAt   int64
-	LastSeenAt    int64
-}
-
-type ProxyListDto struct {
-	RegionId int64
-	Protocol string
-	Keyword  string
-	Alive    int64
-	Page     int64
-	PageSize int64
-}
-
-type ProxyListView struct {
-	Total int64
-	Items []ProxyView
-}
-
-type ProxySyncView struct {
-	Id         int64
-	StartedAt  int64
-	FinishedAt int64
-	Status     string
-	Source     string
-	Total      int64
-	Added      int64
-	Removed    int64
-	Updated    int64
-	DetailJson string
-	Error      string
-}
-
-type ProxyStatsView struct {
-	Total       int64
-	Regions     int64
-	LastSyncAt  int64
-	LastCheckAt int64
-	LastStatus  string
-	Checking    bool
-	Syncing     bool
-}
-
-// ---- 代理提取密钥 ----
-
-type ProxyKeyView struct {
-	Id           int64
-	Key          string
-	Name         string
-	RegionId     int64
-	RegionCode   string
-	RegionZhName string
-	Enabled      bool
-	UsedCount    int64
-	LastUsedAt   int64
-	CreatedAt    int64
-}
-
-// ProxyKeySaveDto regionId=0 表示全部地区；key 由服务端生成
-type ProxyKeySaveDto struct {
-	Name     string
-	RegionId int64
 }
 
 // ---- settings ----

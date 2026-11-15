@@ -22,9 +22,6 @@ type Querier interface {
 	CountLicenseCards(ctx context.Context, arg CountLicenseCardsParams) (int64, error)
 	CountMemories(ctx context.Context) (int64, error)
 	CountPayOrders(ctx context.Context, arg CountPayOrdersParams) (int64, error)
-	CountProxies(ctx context.Context) (int64, error)
-	CountProxiesAll(ctx context.Context) (int64, error)
-	CountProxiesFiltered(ctx context.Context, arg CountProxiesFilteredParams) (int64, error)
 	CountServers(ctx context.Context) (int64, error)
 	CountTodayLogins(ctx context.Context) (int64, error)
 	CountTools(ctx context.Context) (int64, error)
@@ -35,14 +32,11 @@ type Querier interface {
 	CreatePayOrder(ctx context.Context, arg CreatePayOrderParams) (int64, error)
 	DeleteBookmark(ctx context.Context, arg DeleteBookmarkParams) (int64, error)
 	DeleteDbconn(ctx context.Context, id int64) (int64, error)
-	DeleteDeadProxies(ctx context.Context, lastCheckedAt int64) (int64, error)
 	DeleteFile(ctx context.Context, arg DeleteFileParams) (int64, error)
 	DeleteLicenseApp(ctx context.Context, id int64) error
 	DeleteLicenseCard(ctx context.Context, id int64) error
 	DeleteMemory(ctx context.Context, k string) (int64, error)
 	DeleteOtherSessions(ctx context.Context, arg DeleteOtherSessionsParams) error
-	DeleteProxy(ctx context.Context, id int64) error
-	DeleteProxyApiKey(ctx context.Context, id int64) (int64, error)
 	DeleteServer(ctx context.Context, id int64) (int64, error)
 	DeleteSession(ctx context.Context, token string) error
 	DeleteShare(ctx context.Context, arg DeleteShareParams) (int64, error)
@@ -50,7 +44,6 @@ type Querier interface {
 	DeleteTool(ctx context.Context, id int64) error
 	DeleteUser(ctx context.Context, id int64) error
 	DeleteVault(ctx context.Context, arg DeleteVaultParams) (int64, error)
-	FinishProxySync(ctx context.Context, arg FinishProxySyncParams) error
 	GetDbconn(ctx context.Context, id int64) (Dbconn, error)
 	GetFile(ctx context.Context, id int64) (File, error)
 	GetLicenseAppByAppid(ctx context.Context, appid string) (LicenseApp, error)
@@ -59,8 +52,6 @@ type Querier interface {
 	GetPayOrder(ctx context.Context, id int64) (PayOrder, error)
 	GetPayOrderByOutNo(ctx context.Context, outTradeNo string) (PayOrder, error)
 	GetPayOrderByTradeNo(ctx context.Context, tradeNo string) (PayOrder, error)
-	GetProxyApiKey(ctx context.Context, kkey string) (ProxyKey, error)
-	GetProxyRegionByCode(ctx context.Context, code string) (ProxyRegion, error)
 	GetServer(ctx context.Context, id int64) (Server, error)
 	GetSessionUser(ctx context.Context, token string) (GetSessionUserRow, error)
 	GetSetting(ctx context.Context, k string) (string, error)
@@ -73,16 +64,12 @@ type Querier interface {
 	InsertBookmark(ctx context.Context, arg InsertBookmarkParams) (int64, error)
 	InsertDbconn(ctx context.Context, arg InsertDbconnParams) (int64, error)
 	InsertFile(ctx context.Context, arg InsertFileParams) (int64, error)
-	InsertProxy(ctx context.Context, arg InsertProxyParams) (int64, error)
-	InsertProxyApiKey(ctx context.Context, arg InsertProxyApiKeyParams) (int64, error)
-	InsertProxySync(ctx context.Context, arg InsertProxySyncParams) (int64, error)
 	InsertServer(ctx context.Context, arg InsertServerParams) (int64, error)
 	InsertSession(ctx context.Context, arg InsertSessionParams) error
 	InsertShare(ctx context.Context, arg InsertShareParams) (int64, error)
 	InsertTool(ctx context.Context, arg InsertToolParams) (int64, error)
 	InsertUser(ctx context.Context, arg InsertUserParams) (int64, error)
 	InsertVault(ctx context.Context, arg InsertVaultParams) (int64, error)
-	LastProxyCheckAt(ctx context.Context) (interface{}, error)
 	LicenseCardStats(ctx context.Context, arg LicenseCardStatsParams) (LicenseCardStatsRow, error)
 	LicenseCardStatsAll(ctx context.Context, expiresAt int64) (LicenseCardStatsAllRow, error)
 	ListBookmarks(ctx context.Context, userID int64) ([]Bookmark, error)
@@ -94,42 +81,30 @@ type Querier interface {
 	ListMemories(ctx context.Context, arg ListMemoriesParams) ([]Memory, error)
 	ListPayOrders(ctx context.Context, arg ListPayOrdersParams) ([]PayOrder, error)
 	ListPendingPayOrders(ctx context.Context) ([]PayOrder, error)
-	ListProxiesDue(ctx context.Context, lastCheckedAt int64) ([]ListProxiesDueRow, error)
-	ListProxiesFiltered(ctx context.Context, arg ListProxiesFilteredParams) ([]ListProxiesFilteredRow, error)
-	ListProxyApiKeys(ctx context.Context) ([]ListProxyApiKeysRow, error)
-	ListProxyKeys(ctx context.Context) ([]ListProxyKeysRow, error)
-	ListProxyRegions(ctx context.Context) ([]ListProxyRegionsRow, error)
-	ListProxySyncs(ctx context.Context, limit int64) ([]ProxySync, error)
 	ListServers(ctx context.Context) ([]Server, error)
 	ListShares(ctx context.Context, userID int64) ([]Share, error)
 	ListTools(ctx context.Context) ([]Tool, error)
 	ListUsers(ctx context.Context, arg ListUsersParams) ([]User, error)
 	ListVault(ctx context.Context, arg ListVaultParams) ([]Vault, error)
 	LoginTrend(ctx context.Context, createdAt int64) ([]LoginTrendRow, error)
-	MarkProxyAlive(ctx context.Context, arg MarkProxyAliveParams) error
-	MarkProxyFailed(ctx context.Context, arg MarkProxyFailedParams) error
 	MemoryProjects(ctx context.Context) ([]MemoryProjectsRow, error)
 	PayDailyPaid(ctx context.Context, paidAt int64) ([]PayDailyPaidRow, error)
 	PayOrderStats(ctx context.Context, createdAt int64) (PayOrderStatsRow, error)
-	RandomProxies(ctx context.Context, arg RandomProxiesParams) ([]RandomProxiesRow, error)
 	RecentPaidOrders(ctx context.Context, limit int64) ([]RecentPaidOrdersRow, error)
 	SetPayNotified(ctx context.Context, id int64) error
 	SetPayOrderQrcode(ctx context.Context, arg SetPayOrderQrcodeParams) error
 	SetPayOrderStatus(ctx context.Context, arg SetPayOrderStatusParams) error
 	SetPayOrderUpstream(ctx context.Context, arg SetPayOrderUpstreamParams) error
-	TouchProxyApiKey(ctx context.Context, arg TouchProxyApiKeyParams) error
 	TouchSession(ctx context.Context, arg TouchSessionParams) error
 	UpdateBookmark(ctx context.Context, arg UpdateBookmarkParams) (int64, error)
 	UpdateDbconn(ctx context.Context, arg UpdateDbconnParams) (int64, error)
 	UpdateLicenseApp(ctx context.Context, arg UpdateLicenseAppParams) error
-	UpdateProxySeen(ctx context.Context, arg UpdateProxySeenParams) error
 	UpdateServer(ctx context.Context, arg UpdateServerParams) (int64, error)
 	UpdateTool(ctx context.Context, arg UpdateToolParams) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) error
 	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error
 	UpdateVault(ctx context.Context, arg UpdateVaultParams) (int64, error)
 	UpsertMemory(ctx context.Context, arg UpsertMemoryParams) error
-	UpsertProxyRegion(ctx context.Context, arg UpsertProxyRegionParams) error
 	UpsertSetting(ctx context.Context, arg UpsertSettingParams) error
 }
 

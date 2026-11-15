@@ -9,8 +9,6 @@ export default interface statsView {
   uptimeSeconds:number
   loginTrend:trendPoint[]
   servers:number
-  proxies:number
-  aliveProxies:number
   todayOrders:number
   todayMoney:number
   totalMoney:number

@@ -50,13 +50,14 @@ func (s *Store) migrate() error {
 	if _, err := s.DB.Exec(db.SchemaDDL); err != nil {
 		return fmt.Errorf("store: migrate failed: %w", err)
 	}
-	// proxies.source 是后加的列：老库探测缺失则 ALTER（COUNT 空表也返回行，不误判）
-	var dummy int64
-	if err := s.DB.QueryRow("SELECT COUNT(source) FROM proxies").Scan(&dummy); err != nil {
-		if _, err := s.DB.Exec("ALTER TABLE proxies ADD COLUMN source TEXT NOT NULL DEFAULT ''"); err != nil {
-			return fmt.Errorf("store: migrate proxies.source failed: %w", err)
-		}
+	// 代理池功能已移除：清掉老库遗留的表
+	if _, err := s.DB.Exec(`DROP TABLE IF EXISTS proxies;
+DROP TABLE IF EXISTS proxy_regions;
+DROP TABLE IF EXISTS proxy_syncs;
+DROP TABLE IF EXISTS proxy_keys;`); err != nil {
+		return fmt.Errorf("store: drop proxy tables failed: %w", err)
 	}
+	var dummy int64
 	if err := s.DB.QueryRow("SELECT COUNT(app_id) FROM license_cards").Scan(&dummy); err != nil {
 		if _, err := s.DB.Exec("ALTER TABLE license_cards ADD COLUMN app_id INTEGER NOT NULL DEFAULT 0"); err != nil {
 			return fmt.Errorf("store: migrate license_cards.app_id failed: %w", err)

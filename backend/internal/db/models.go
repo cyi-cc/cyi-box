@@ -97,59 +97,6 @@ type PayOrder struct {
 	CreatedAt       int64
 }
 
-type Proxy struct {
-	ID            int64
-	Ip            string
-	Port          int64
-	Protocols     string
-	Anonymity     string
-	Source        string
-	RegionID      int64
-	Latency       int64
-	Speed         int64
-	Uptime        int64
-	Alive         int64
-	FailCount     int64
-	LastCheckedAt int64
-	LastAliveAt   int64
-	LastSeenAt    int64
-	CreatedAt     int64
-}
-
-type ProxyKey struct {
-	ID         int64
-	Kkey       string
-	Name       string
-	RegionID   int64
-	Enabled    int64
-	UsedCount  int64
-	LastUsedAt int64
-	CreatedAt  int64
-}
-
-type ProxyRegion struct {
-	ID     int64
-	Code   string
-	Name   string
-	ZhName string
-	Region string
-	Slug   string
-}
-
-type ProxySync struct {
-	ID         int64
-	StartedAt  int64
-	FinishedAt int64
-	Status     string
-	Source     string
-	Total      int64
-	Added      int64
-	Removed    int64
-	Updated    int64
-	Detail     string
-	Error      string
-}
-
 type Server struct {
 	ID        int64
 	Name      string

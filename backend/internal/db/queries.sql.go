@@ -180,60 +180,6 @@ func (q *Queries) CountPayOrders(ctx context.Context, arg CountPayOrdersParams) 
 	return count, err
 }
 
-const countProxies = `-- name: CountProxies :one
-SELECT COUNT(*) FROM proxies WHERE alive = 1
-`
-
-func (q *Queries) CountProxies(ctx context.Context) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countProxies)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
-const countProxiesAll = `-- name: CountProxiesAll :one
-SELECT COUNT(*) FROM proxies
-`
-
-func (q *Queries) CountProxiesAll(ctx context.Context) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countProxiesAll)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
-const countProxiesFiltered = `-- name: CountProxiesFiltered :one
-SELECT COUNT(*) FROM proxies p WHERE (? = 0 OR p.region_id = ?) AND (? = '' OR p.protocols LIKE '%' || ? || '%')
-AND (? = '' OR p.ip LIKE '%' || ? || '%') AND (? < 0 OR p.alive = ?)
-`
-
-type CountProxiesFilteredParams struct {
-	Column1  interface{}
-	RegionID int64
-	Column3  interface{}
-	Column4  sql.NullString
-	Column5  interface{}
-	Column6  sql.NullString
-	Column7  interface{}
-	Alive    int64
-}
-
-func (q *Queries) CountProxiesFiltered(ctx context.Context, arg CountProxiesFilteredParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countProxiesFiltered,
-		arg.Column1,
-		arg.RegionID,
-		arg.Column3,
-		arg.Column4,
-		arg.Column5,
-		arg.Column6,
-		arg.Column7,
-		arg.Alive,
-	)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
 const countServers = `-- name: CountServers :one
 SELECT COUNT(*) FROM servers
 `
@@ -403,18 +349,6 @@ func (q *Queries) DeleteDbconn(ctx context.Context, id int64) (int64, error) {
 	return result.RowsAffected()
 }
 
-const deleteDeadProxies = `-- name: DeleteDeadProxies :execrows
-DELETE FROM proxies WHERE alive = 0 AND last_checked_at < ?
-`
-
-func (q *Queries) DeleteDeadProxies(ctx context.Context, lastCheckedAt int64) (int64, error) {
-	result, err := q.db.ExecContext(ctx, deleteDeadProxies, lastCheckedAt)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected()
-}
-
 const deleteFile = `-- name: DeleteFile :execrows
 DELETE FROM files WHERE id = ? AND user_id = ?
 `
@@ -474,27 +408,6 @@ type DeleteOtherSessionsParams struct {
 func (q *Queries) DeleteOtherSessions(ctx context.Context, arg DeleteOtherSessionsParams) error {
 	_, err := q.db.ExecContext(ctx, deleteOtherSessions, arg.UserID, arg.Token)
 	return err
-}
-
-const deleteProxy = `-- name: DeleteProxy :exec
-DELETE FROM proxies WHERE id = ?
-`
-
-func (q *Queries) DeleteProxy(ctx context.Context, id int64) error {
-	_, err := q.db.ExecContext(ctx, deleteProxy, id)
-	return err
-}
-
-const deleteProxyApiKey = `-- name: DeleteProxyApiKey :execrows
-DELETE FROM proxy_keys WHERE id = ?
-`
-
-func (q *Queries) DeleteProxyApiKey(ctx context.Context, id int64) (int64, error) {
-	result, err := q.db.ExecContext(ctx, deleteProxyApiKey, id)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected()
 }
 
 const deleteServer = `-- name: DeleteServer :execrows
@@ -577,37 +490,6 @@ func (q *Queries) DeleteVault(ctx context.Context, arg DeleteVaultParams) (int64
 		return 0, err
 	}
 	return result.RowsAffected()
-}
-
-const finishProxySync = `-- name: FinishProxySync :exec
-UPDATE proxy_syncs SET finished_at = ?, status = ?, total = ?, added = ?, removed = ?, updated = ?, detail = ?, error = ? WHERE id = ?
-`
-
-type FinishProxySyncParams struct {
-	FinishedAt int64
-	Status     string
-	Total      int64
-	Added      int64
-	Removed    int64
-	Updated    int64
-	Detail     string
-	Error      string
-	ID         int64
-}
-
-func (q *Queries) FinishProxySync(ctx context.Context, arg FinishProxySyncParams) error {
-	_, err := q.db.ExecContext(ctx, finishProxySync,
-		arg.FinishedAt,
-		arg.Status,
-		arg.Total,
-		arg.Added,
-		arg.Removed,
-		arg.Updated,
-		arg.Detail,
-		arg.Error,
-		arg.ID,
-	)
-	return err
 }
 
 const getDbconn = `-- name: GetDbconn :one
@@ -822,44 +704,6 @@ func (q *Queries) GetPayOrderByTradeNo(ctx context.Context, tradeNo string) (Pay
 		&i.QueryPwd,
 		&i.Cards,
 		&i.CreatedAt,
-	)
-	return i, err
-}
-
-const getProxyApiKey = `-- name: GetProxyApiKey :one
-SELECT id, kkey, name, region_id, enabled, used_count, last_used_at, created_at FROM proxy_keys WHERE kkey = ? AND enabled = 1
-`
-
-func (q *Queries) GetProxyApiKey(ctx context.Context, kkey string) (ProxyKey, error) {
-	row := q.db.QueryRowContext(ctx, getProxyApiKey, kkey)
-	var i ProxyKey
-	err := row.Scan(
-		&i.ID,
-		&i.Kkey,
-		&i.Name,
-		&i.RegionID,
-		&i.Enabled,
-		&i.UsedCount,
-		&i.LastUsedAt,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
-const getProxyRegionByCode = `-- name: GetProxyRegionByCode :one
-SELECT id, code, name, zh_name, region, slug FROM proxy_regions WHERE code = ?
-`
-
-func (q *Queries) GetProxyRegionByCode(ctx context.Context, code string) (ProxyRegion, error) {
-	row := q.db.QueryRowContext(ctx, getProxyRegionByCode, code)
-	var i ProxyRegion
-	err := row.Scan(
-		&i.ID,
-		&i.Code,
-		&i.Name,
-		&i.ZhName,
-		&i.Region,
-		&i.Slug,
 	)
 	return i, err
 }
@@ -1146,86 +990,6 @@ func (q *Queries) InsertFile(ctx context.Context, arg InsertFileParams) (int64, 
 	return result.LastInsertId()
 }
 
-const insertProxy = `-- name: InsertProxy :execlastid
-INSERT INTO proxies(ip, port, protocols, anonymity, source, region_id, latency, speed, uptime, alive, last_seen_at, created_at)
-VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
-`
-
-type InsertProxyParams struct {
-	Ip         string
-	Port       int64
-	Protocols  string
-	Anonymity  string
-	Source     string
-	RegionID   int64
-	Latency    int64
-	Speed      int64
-	Uptime     int64
-	LastSeenAt int64
-	CreatedAt  int64
-}
-
-func (q *Queries) InsertProxy(ctx context.Context, arg InsertProxyParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, insertProxy,
-		arg.Ip,
-		arg.Port,
-		arg.Protocols,
-		arg.Anonymity,
-		arg.Source,
-		arg.RegionID,
-		arg.Latency,
-		arg.Speed,
-		arg.Uptime,
-		arg.LastSeenAt,
-		arg.CreatedAt,
-	)
-	if err != nil {
-		return 0, err
-	}
-	return result.LastInsertId()
-}
-
-const insertProxyApiKey = `-- name: InsertProxyApiKey :execlastid
-INSERT INTO proxy_keys(kkey, name, region_id, created_at) VALUES(?, ?, ?, ?)
-`
-
-type InsertProxyApiKeyParams struct {
-	Kkey      string
-	Name      string
-	RegionID  int64
-	CreatedAt int64
-}
-
-func (q *Queries) InsertProxyApiKey(ctx context.Context, arg InsertProxyApiKeyParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, insertProxyApiKey,
-		arg.Kkey,
-		arg.Name,
-		arg.RegionID,
-		arg.CreatedAt,
-	)
-	if err != nil {
-		return 0, err
-	}
-	return result.LastInsertId()
-}
-
-const insertProxySync = `-- name: InsertProxySync :execlastid
-INSERT INTO proxy_syncs(started_at, source) VALUES(?, ?)
-`
-
-type InsertProxySyncParams struct {
-	StartedAt int64
-	Source    string
-}
-
-func (q *Queries) InsertProxySync(ctx context.Context, arg InsertProxySyncParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, insertProxySync, arg.StartedAt, arg.Source)
-	if err != nil {
-		return 0, err
-	}
-	return result.LastInsertId()
-}
-
 const insertServer = `-- name: InsertServer :execlastid
 INSERT INTO servers(name, host, port, username, auth_type, secret_enc, note, created_at, updated_at)
 VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -1398,17 +1162,6 @@ func (q *Queries) InsertVault(ctx context.Context, arg InsertVaultParams) (int64
 		return 0, err
 	}
 	return result.LastInsertId()
-}
-
-const lastProxyCheckAt = `-- name: LastProxyCheckAt :one
-SELECT COALESCE(MAX(last_checked_at), 0) FROM proxies
-`
-
-func (q *Queries) LastProxyCheckAt(ctx context.Context) (interface{}, error) {
-	row := q.db.QueryRowContext(ctx, lastProxyCheckAt)
-	var coalesce interface{}
-	err := row.Scan(&coalesce)
-	return coalesce, err
 }
 
 const licenseCardStats = `-- name: LicenseCardStats :one
@@ -1886,323 +1639,6 @@ func (q *Queries) ListPendingPayOrders(ctx context.Context) ([]PayOrder, error) 
 	return items, nil
 }
 
-const listProxiesDue = `-- name: ListProxiesDue :many
-SELECT id, ip, port, protocols, fail_count FROM proxies WHERE last_checked_at < ? ORDER BY last_checked_at LIMIT 20000
-`
-
-type ListProxiesDueRow struct {
-	ID        int64
-	Ip        string
-	Port      int64
-	Protocols string
-	FailCount int64
-}
-
-func (q *Queries) ListProxiesDue(ctx context.Context, lastCheckedAt int64) ([]ListProxiesDueRow, error) {
-	rows, err := q.db.QueryContext(ctx, listProxiesDue, lastCheckedAt)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []ListProxiesDueRow{}
-	for rows.Next() {
-		var i ListProxiesDueRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.Ip,
-			&i.Port,
-			&i.Protocols,
-			&i.FailCount,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listProxiesFiltered = `-- name: ListProxiesFiltered :many
-SELECT p.id, p.ip, p.port, p.protocols, p.anonymity, p.source, p.region_id, p.latency, p.speed, p.uptime, p.alive, p.fail_count, p.last_checked_at, p.last_alive_at, p.last_seen_at, p.created_at, r.code AS region_code, r.name AS region_name, r.zh_name AS region_zh_name
-FROM proxies p JOIN proxy_regions r ON r.id = p.region_id
-WHERE (? = 0 OR p.region_id = ?) AND (? = '' OR p.protocols LIKE '%' || ? || '%')
-AND (? = '' OR p.ip LIKE '%' || ? || '%') AND (? < 0 OR p.alive = ?)
-ORDER BY p.alive DESC, p.latency LIMIT ? OFFSET ?
-`
-
-type ListProxiesFilteredParams struct {
-	Column1  interface{}
-	RegionID int64
-	Column3  interface{}
-	Column4  sql.NullString
-	Column5  interface{}
-	Column6  sql.NullString
-	Column7  interface{}
-	Alive    int64
-	Limit    int64
-	Offset   int64
-}
-
-type ListProxiesFilteredRow struct {
-	ID            int64
-	Ip            string
-	Port          int64
-	Protocols     string
-	Anonymity     string
-	Source        string
-	RegionID      int64
-	Latency       int64
-	Speed         int64
-	Uptime        int64
-	Alive         int64
-	FailCount     int64
-	LastCheckedAt int64
-	LastAliveAt   int64
-	LastSeenAt    int64
-	CreatedAt     int64
-	RegionCode    string
-	RegionName    string
-	RegionZhName  string
-}
-
-func (q *Queries) ListProxiesFiltered(ctx context.Context, arg ListProxiesFilteredParams) ([]ListProxiesFilteredRow, error) {
-	rows, err := q.db.QueryContext(ctx, listProxiesFiltered,
-		arg.Column1,
-		arg.RegionID,
-		arg.Column3,
-		arg.Column4,
-		arg.Column5,
-		arg.Column6,
-		arg.Column7,
-		arg.Alive,
-		arg.Limit,
-		arg.Offset,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []ListProxiesFilteredRow{}
-	for rows.Next() {
-		var i ListProxiesFilteredRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.Ip,
-			&i.Port,
-			&i.Protocols,
-			&i.Anonymity,
-			&i.Source,
-			&i.RegionID,
-			&i.Latency,
-			&i.Speed,
-			&i.Uptime,
-			&i.Alive,
-			&i.FailCount,
-			&i.LastCheckedAt,
-			&i.LastAliveAt,
-			&i.LastSeenAt,
-			&i.CreatedAt,
-			&i.RegionCode,
-			&i.RegionName,
-			&i.RegionZhName,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listProxyApiKeys = `-- name: ListProxyApiKeys :many
-SELECT k.id, k.kkey, k.name, k.region_id, k.enabled, k.used_count, k.last_used_at, k.created_at, r.code AS region_code, r.zh_name AS region_zh_name, r.name AS region_name
-FROM proxy_keys k LEFT JOIN proxy_regions r ON r.id = k.region_id
-ORDER BY k.id DESC
-`
-
-type ListProxyApiKeysRow struct {
-	ID           int64
-	Kkey         string
-	Name         string
-	RegionID     int64
-	Enabled      int64
-	UsedCount    int64
-	LastUsedAt   int64
-	CreatedAt    int64
-	RegionCode   sql.NullString
-	RegionZhName sql.NullString
-	RegionName   sql.NullString
-}
-
-func (q *Queries) ListProxyApiKeys(ctx context.Context) ([]ListProxyApiKeysRow, error) {
-	rows, err := q.db.QueryContext(ctx, listProxyApiKeys)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []ListProxyApiKeysRow{}
-	for rows.Next() {
-		var i ListProxyApiKeysRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.Kkey,
-			&i.Name,
-			&i.RegionID,
-			&i.Enabled,
-			&i.UsedCount,
-			&i.LastUsedAt,
-			&i.CreatedAt,
-			&i.RegionCode,
-			&i.RegionZhName,
-			&i.RegionName,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listProxyKeys = `-- name: ListProxyKeys :many
-SELECT id, ip, port, source FROM proxies
-`
-
-type ListProxyKeysRow struct {
-	ID     int64
-	Ip     string
-	Port   int64
-	Source string
-}
-
-func (q *Queries) ListProxyKeys(ctx context.Context) ([]ListProxyKeysRow, error) {
-	rows, err := q.db.QueryContext(ctx, listProxyKeys)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []ListProxyKeysRow{}
-	for rows.Next() {
-		var i ListProxyKeysRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.Ip,
-			&i.Port,
-			&i.Source,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listProxyRegions = `-- name: ListProxyRegions :many
-SELECT r.id, r.code, r.name, r.zh_name, r.region, r.slug, (SELECT COUNT(*) FROM proxies p WHERE p.region_id = r.id AND p.alive = 1) AS alive_count
-FROM proxy_regions r ORDER BY alive_count DESC, r.code
-`
-
-type ListProxyRegionsRow struct {
-	ID         int64
-	Code       string
-	Name       string
-	ZhName     string
-	Region     string
-	Slug       string
-	AliveCount int64
-}
-
-func (q *Queries) ListProxyRegions(ctx context.Context) ([]ListProxyRegionsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listProxyRegions)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []ListProxyRegionsRow{}
-	for rows.Next() {
-		var i ListProxyRegionsRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.Code,
-			&i.Name,
-			&i.ZhName,
-			&i.Region,
-			&i.Slug,
-			&i.AliveCount,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listProxySyncs = `-- name: ListProxySyncs :many
-SELECT id, started_at, finished_at, status, source, total, added, removed, updated, detail, error FROM proxy_syncs ORDER BY id DESC LIMIT ?
-`
-
-func (q *Queries) ListProxySyncs(ctx context.Context, limit int64) ([]ProxySync, error) {
-	rows, err := q.db.QueryContext(ctx, listProxySyncs, limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []ProxySync{}
-	for rows.Next() {
-		var i ProxySync
-		if err := rows.Scan(
-			&i.ID,
-			&i.StartedAt,
-			&i.FinishedAt,
-			&i.Status,
-			&i.Source,
-			&i.Total,
-			&i.Added,
-			&i.Removed,
-			&i.Updated,
-			&i.Detail,
-			&i.Error,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listServers = `-- name: ListServers :many
 SELECT id, name, host, port, username, auth_type, secret_enc, note, created_at, updated_at FROM servers ORDER BY id
 `
@@ -2435,42 +1871,6 @@ func (q *Queries) LoginTrend(ctx context.Context, createdAt int64) ([]LoginTrend
 	return items, nil
 }
 
-const markProxyAlive = `-- name: MarkProxyAlive :exec
-UPDATE proxies SET last_checked_at = ?, alive = 1, fail_count = 0, last_alive_at = ?, latency = ? WHERE id = ?
-`
-
-type MarkProxyAliveParams struct {
-	LastCheckedAt int64
-	LastAliveAt   int64
-	Latency       int64
-	ID            int64
-}
-
-func (q *Queries) MarkProxyAlive(ctx context.Context, arg MarkProxyAliveParams) error {
-	_, err := q.db.ExecContext(ctx, markProxyAlive,
-		arg.LastCheckedAt,
-		arg.LastAliveAt,
-		arg.Latency,
-		arg.ID,
-	)
-	return err
-}
-
-const markProxyFailed = `-- name: MarkProxyFailed :exec
-UPDATE proxies SET last_checked_at = ?, alive = 0, fail_count = ? WHERE id = ?
-`
-
-type MarkProxyFailedParams struct {
-	LastCheckedAt int64
-	FailCount     int64
-	ID            int64
-}
-
-func (q *Queries) MarkProxyFailed(ctx context.Context, arg MarkProxyFailedParams) error {
-	_, err := q.db.ExecContext(ctx, markProxyFailed, arg.LastCheckedAt, arg.FailCount, arg.ID)
-	return err
-}
-
 const memoryProjects = `-- name: MemoryProjects :many
 SELECT project AS name, COUNT(*) AS cnt FROM memories
 WHERE project != '' GROUP BY project ORDER BY MAX(updated_at) DESC
@@ -2563,73 +1963,6 @@ func (q *Queries) PayOrderStats(ctx context.Context, createdAt int64) (PayOrderS
 		&i.Paid,
 	)
 	return i, err
-}
-
-const randomProxies = `-- name: RandomProxies :many
-SELECT p.id, p.ip, p.port, p.protocols, p.fail_count, r.code AS region_code, r.zh_name AS region_zh_name
-FROM proxies p JOIN proxy_regions r ON r.id = p.region_id
-WHERE p.alive = 1 AND (? = 0 OR p.region_id = ?) AND (? = '' OR p.protocols LIKE '%' || ? || '%')
-AND (? = '' OR r.code = ?)
-ORDER BY RANDOM() LIMIT ?
-`
-
-type RandomProxiesParams struct {
-	Column1  interface{}
-	RegionID int64
-	Column3  interface{}
-	Column4  sql.NullString
-	Column5  interface{}
-	Code     string
-	Limit    int64
-}
-
-type RandomProxiesRow struct {
-	ID           int64
-	Ip           string
-	Port         int64
-	Protocols    string
-	FailCount    int64
-	RegionCode   string
-	RegionZhName string
-}
-
-func (q *Queries) RandomProxies(ctx context.Context, arg RandomProxiesParams) ([]RandomProxiesRow, error) {
-	rows, err := q.db.QueryContext(ctx, randomProxies,
-		arg.Column1,
-		arg.RegionID,
-		arg.Column3,
-		arg.Column4,
-		arg.Column5,
-		arg.Code,
-		arg.Limit,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []RandomProxiesRow{}
-	for rows.Next() {
-		var i RandomProxiesRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.Ip,
-			&i.Port,
-			&i.Protocols,
-			&i.FailCount,
-			&i.RegionCode,
-			&i.RegionZhName,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
 
 const recentPaidOrders = `-- name: RecentPaidOrders :many
@@ -2746,20 +2079,6 @@ func (q *Queries) SetPayOrderUpstream(ctx context.Context, arg SetPayOrderUpstre
 	return err
 }
 
-const touchProxyApiKey = `-- name: TouchProxyApiKey :exec
-UPDATE proxy_keys SET used_count = used_count + 1, last_used_at = ? WHERE id = ?
-`
-
-type TouchProxyApiKeyParams struct {
-	LastUsedAt int64
-	ID         int64
-}
-
-func (q *Queries) TouchProxyApiKey(ctx context.Context, arg TouchProxyApiKeyParams) error {
-	_, err := q.db.ExecContext(ctx, touchProxyApiKey, arg.LastUsedAt, arg.ID)
-	return err
-}
-
 const touchSession = `-- name: TouchSession :exec
 UPDATE sessions SET expires_at = ? WHERE token = ?
 `
@@ -2851,36 +2170,6 @@ type UpdateLicenseAppParams struct {
 
 func (q *Queries) UpdateLicenseApp(ctx context.Context, arg UpdateLicenseAppParams) error {
 	_, err := q.db.ExecContext(ctx, updateLicenseApp, arg.Name, arg.Enabled, arg.ID)
-	return err
-}
-
-const updateProxySeen = `-- name: UpdateProxySeen :exec
-UPDATE proxies SET protocols = ?, anonymity = ?, region_id = ?, latency = ?, speed = ?, uptime = ?, last_seen_at = ?, alive = 1, fail_count = 0
-WHERE id = ?
-`
-
-type UpdateProxySeenParams struct {
-	Protocols  string
-	Anonymity  string
-	RegionID   int64
-	Latency    int64
-	Speed      int64
-	Uptime     int64
-	LastSeenAt int64
-	ID         int64
-}
-
-func (q *Queries) UpdateProxySeen(ctx context.Context, arg UpdateProxySeenParams) error {
-	_, err := q.db.ExecContext(ctx, updateProxySeen,
-		arg.Protocols,
-		arg.Anonymity,
-		arg.RegionID,
-		arg.Latency,
-		arg.Speed,
-		arg.Uptime,
-		arg.LastSeenAt,
-		arg.ID,
-	)
 	return err
 }
 
@@ -3060,31 +2349,6 @@ func (q *Queries) UpsertMemory(ctx context.Context, arg UpsertMemoryParams) erro
 		arg.WrittenBy,
 		arg.CreatedAt,
 		arg.UpdatedAt,
-	)
-	return err
-}
-
-const upsertProxyRegion = `-- name: UpsertProxyRegion :exec
-INSERT INTO proxy_regions(code, name, zh_name, region, slug) VALUES(?, ?, ?, ?, ?)
-ON CONFLICT(code) DO UPDATE SET name = excluded.name, zh_name = excluded.zh_name,
-  region = excluded.region, slug = excluded.slug
-`
-
-type UpsertProxyRegionParams struct {
-	Code   string
-	Name   string
-	ZhName string
-	Region string
-	Slug   string
-}
-
-func (q *Queries) UpsertProxyRegion(ctx context.Context, arg UpsertProxyRegionParams) error {
-	_, err := q.db.ExecContext(ctx, upsertProxyRegion,
-		arg.Code,
-		arg.Name,
-		arg.ZhName,
-		arg.Region,
-		arg.Slug,
 	)
 	return err
 }

@@ -50,8 +50,6 @@ func (s *DashboardSvc) Stats() (dto.StatsView, error) {
 
 	// 业务模块计数
 	view.Servers, _ = s.Store.CountServers()
-	view.Proxies, _ = q.CountProxiesAll(ctx)
-	view.AliveProxies, _ = s.Store.CountAliveProxies()
 	view.LicenseApps, _ = q.CountLicenseApps(ctx)
 	view.Dbconns, _ = q.CountDbconns(ctx)
 	view.Files, _ = q.CountFilesAll(ctx)

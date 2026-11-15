@@ -11,7 +11,7 @@ import {
   KeyOutline, BookmarksOutline,
   ServerOutline, CubeOutline, CodeOutline, TimeOutline,
   DocumentTextOutline, SendOutline, ColorPaletteOutline, EyedropOutline, ColorWandOutline,
-  CloudOutline, LinkOutline, GlobeOutline, SettingsOutline, ReceiptOutline, CardOutline, AppsOutline,
+  CloudOutline, LinkOutline, SettingsOutline, ReceiptOutline, CardOutline, AppsOutline,
   BulbOutline
 } from '@vicons/ionicons5'
 import { useAuthStore } from '../stores/auth'
@@ -32,15 +32,6 @@ const menuOptions = computed<MenuOption[]>(() => {
     { label: '仪表盘', key: '/dashboard', icon: icon(SpeedometerOutline) },
     { label: '密码管理', key: '/vault', icon: icon(KeyOutline) },
     { label: '书签导航', key: '/bookmarks', icon: icon(BookmarksOutline) },
-    {
-      type: 'group',
-      label: '代理池',
-      key: 'proxy-group',
-      children: [
-        { label: '代理列表', key: '/proxies', icon: icon(GlobeOutline) },
-        { label: '提取链接', key: '/proxies/extract', icon: icon(KeyOutline) }
-      ]
-    },
     {
       type: 'group',
       label: '网盘',
