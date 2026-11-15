@@ -1,20 +1,10 @@
-CREATE TABLE IF NOT EXISTS users (
-  id            INTEGER PRIMARY KEY AUTOINCREMENT,
-  name          TEXT NOT NULL UNIQUE,
-  password_hash TEXT NOT NULL,
-  role          TEXT NOT NULL DEFAULT 'user',
-  status        TEXT NOT NULL DEFAULT 'active',
-  created_at    INTEGER NOT NULL,
-  updated_at    INTEGER NOT NULL
-);
-
+-- 单用户模型：无用户表，登录密码 bcrypt 存 settings(k='admin_password_hash')；
+-- 会话只记 token/有效期，不设属主
 CREATE TABLE IF NOT EXISTS sessions (
   token      TEXT PRIMARY KEY,
-  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   created_at INTEGER NOT NULL,
   expires_at INTEGER NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_expiry ON sessions(expires_at);
 
 CREATE TABLE IF NOT EXISTS tools (
@@ -29,7 +19,6 @@ CREATE TABLE IF NOT EXISTS tools (
 
 CREATE TABLE IF NOT EXISTS vault (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   title        TEXT NOT NULL,
   username     TEXT NOT NULL DEFAULT '',
   password_enc TEXT NOT NULL DEFAULT '',
@@ -39,19 +28,14 @@ CREATE TABLE IF NOT EXISTS vault (
   created_at   INTEGER NOT NULL,
   updated_at   INTEGER NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_vault_user ON vault(user_id);
-
 CREATE TABLE IF NOT EXISTS bookmarks (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   title      TEXT NOT NULL,
   url        TEXT NOT NULL,
   icon       TEXT NOT NULL DEFAULT '',
   sort       INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_bookmarks_user ON bookmarks(user_id);
-
 CREATE TABLE IF NOT EXISTS servers (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   name       TEXT NOT NULL,
@@ -67,26 +51,21 @@ CREATE TABLE IF NOT EXISTS servers (
 
 CREATE TABLE IF NOT EXISTS files (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   name       TEXT NOT NULL,
   stored     TEXT NOT NULL,
   size       INTEGER NOT NULL DEFAULT 0,
   mime       TEXT NOT NULL DEFAULT '',
   created_at INTEGER NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_files_user ON files(user_id);
-
 CREATE TABLE IF NOT EXISTS shares (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   code       TEXT NOT NULL UNIQUE,
   file_id    INTEGER NOT NULL REFERENCES files(id) ON DELETE CASCADE,
-  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   file_name  TEXT NOT NULL DEFAULT '',
   expires_at INTEGER NOT NULL DEFAULT 0,
   downloads  INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_shares_user ON shares(user_id);
 CREATE INDEX IF NOT EXISTS idx_shares_file ON shares(file_id);
 
 CREATE TABLE IF NOT EXISTS dbconns (

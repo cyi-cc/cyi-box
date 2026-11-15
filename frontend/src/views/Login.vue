@@ -3,36 +3,39 @@ import { reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NInput, NButton, NIcon } from 'naive-ui'
 import {
-  ConstructOutline, PersonOutline, LockClosedOutline,
+  ConstructOutline, LockClosedOutline,
   FlashOutline, ShieldCheckmarkOutline, CubeOutline
 } from '@vicons/ionicons5'
 import { useAuthStore } from '../stores/auth'
 import { useBookmarksStore } from '../stores/bookmarks'
+import { takeRedirect } from '../lib/api'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const bookmarksStore = useBookmarksStore()
 
-const form = reactive({ name: '', password: '' })
+const form = reactive({ password: '' })
 const loading = ref(false)
 const errorMsg = ref('')
 
 async function submit() {
-  if (!form.name || !form.password) {
-    errorMsg.value = '请输入用户名和密码'
+  if (!form.password) {
+    errorMsg.value = '请输入密码'
     return
   }
   loading.value = true
   errorMsg.value = ''
   try {
-    const err = await auth.login(form.name, form.password)
+    const err = await auth.login(form.password)
     if (err) {
       errorMsg.value = err
       return
     }
     void bookmarksStore.refresh()
-    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/'
+    // 兼容旧 ?redirect= 链接，优先取；隐式回跳存 sessionStorage
+    const q = route.query.redirect
+    const redirect = (typeof q === 'string' && q.startsWith('/') ? q : takeRedirect()) || '/'
     void router.replace(redirect)
   } finally {
     loading.value = false
@@ -75,15 +78,8 @@ async function submit() {
           <p class="sub">登录你的账户继续使用</p>
 
           <n-input
-            v-model:value="form.name"
-            size="large"
-            placeholder="用户名"
-            @keyup.enter="submit"
-          >
-            <template #prefix><n-icon><PersonOutline /></n-icon></template>
-          </n-input>
-          <n-input
             v-model:value="form.password"
+            autofocus
             size="large"
             type="password"
             show-password-on="click"

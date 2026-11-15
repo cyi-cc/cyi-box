@@ -1,7 +1,8 @@
 // memory_routes.go 记忆库对外协议端点：
-//   POST /mcp      Streamable HTTP MCP（Bearer 令牌鉴权，令牌见 MemorySvc.McpInfo）
-//   GET  /m        阅读链接索引（Bearer 鉴权——key 可枚举，不能裸奔）
-//   GET  /m/*      记忆阅读链接（?sig= 签名鉴权，HMAC(key, 令牌) 签发，令牌重置即吊销）
+//
+//	POST /mcp      Streamable HTTP MCP（Bearer 令牌鉴权，令牌见 MemorySvc.McpInfo）
+//	GET  /m        阅读链接索引（Bearer 鉴权——key 可枚举，不能裸奔）
+//	GET  /m/*      记忆阅读链接（?sig= 签名鉴权，HMAC(key, 令牌) 签发，令牌重置即吊销）
 package service
 
 import (

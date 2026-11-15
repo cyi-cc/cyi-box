@@ -8,11 +8,12 @@ type OkView struct {
 
 // ---- auth ----
 
+// LoginDto 单用户模型：只验密码，口令哈希存 settings
 type LoginDto struct {
-	Name     string
 	Password string
 }
 
+// UserView 登录态视图：单用户模型下恒为内置 admin
 type UserView struct {
 	Id        int64
 	Name      string
@@ -31,32 +32,6 @@ type ChangePasswordDto struct {
 	NewPassword string
 }
 
-// ---- user admin ----
-
-type ListUsersDto struct {
-	Page     int64
-	PageSize int64
-	Keyword  *string
-}
-
-type UserPageView struct {
-	Total int64
-	Items []UserView
-}
-
-// SaveUserDto 创建/更新一体：Id 为空为新建；Password 更新时可空（不填不改密码）
-type SaveUserDto struct {
-	Id       *int64
-	Name     string
-	Password *string
-	Role     string
-	Status   *string
-}
-
-type DeleteUserDto struct {
-	Id int64
-}
-
 // ---- dashboard ----
 
 type TrendPoint struct {
@@ -65,7 +40,6 @@ type TrendPoint struct {
 }
 
 type StatsView struct {
-	TotalUsers     int64
 	ActiveSessions int64
 	TodayLogins    int64
 	UptimeSeconds  int64

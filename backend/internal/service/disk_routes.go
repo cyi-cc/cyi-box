@@ -19,19 +19,18 @@ import (
 	"github.com/cyi-cc/cyi-box/backend/internal/store"
 )
 
-// routeUser 自定义路由的登录用户校验（区别于 routeAdmin：任何登录用户可用）
-func routeUser(st *store.Store, ctx *fasthttp.RequestCtx) (store.SessionUser, error) {
+// routeUser 自定义路由的登录校验（区别于 routeAdmin）
+func routeUser(st *store.Store, ctx *fasthttp.RequestCtx) error {
 	token := string(ctx.QueryArgs().Peek("token"))
 	if token == "" {
 		ctx.SetStatusCode(fasthttp.StatusUnauthorized)
-		return store.SessionUser{}, errors.New("missing token")
+		return errors.New("missing token")
 	}
-	su, err := st.GetSessionUser(token, sessionTTL, sessionRenewAfter)
-	if err != nil || su.User.Status != "active" {
+	if err := st.CheckSession(token, sessionTTL, sessionRenewAfter); err != nil {
 		ctx.SetStatusCode(fasthttp.StatusUnauthorized)
-		return store.SessionUser{}, errors.New("invalid token")
+		return errors.New("invalid token")
 	}
-	return su, nil
+	return nil
 }
 
 func routeJSONErr(ctx *fasthttp.RequestCtx, code int, msg string) {
@@ -44,8 +43,7 @@ func routeJSONErr(ctx *fasthttp.RequestCtx, code int, msg string) {
 func DiskUploadHandler(st *store.Store, cfg *config.Config) fun.RouteHandler {
 	return func(rc *fun.RouteCtx) error {
 		ctx := rc.RequestCtx
-		su, err := routeUser(st, ctx)
-		if err != nil {
+		if err := routeUser(st, ctx); err != nil {
 			routeJSONErr(ctx, 401, "未登录或登录已失效")
 			return nil
 		}
@@ -79,7 +77,7 @@ func DiskUploadHandler(st *store.Store, cfg *config.Config) fun.RouteHandler {
 
 		mimeType := fh.Header.Get("Content-Type")
 		f := store.File{
-			UserID: su.User.Id, Name: filepath.Base(fh.Filename),
+			Name:   filepath.Base(fh.Filename),
 			Stored: stored, Size: size, Mime: mimeType,
 		}
 		if err := st.InsertFile(&f); err != nil {
@@ -121,14 +119,13 @@ func serveDiskFile(ctx *fasthttp.RequestCtx, dir, stored, name, mimeType string,
 func DiskDownloadHandler(st *store.Store, cfg *config.Config) fun.RouteHandler {
 	return func(rc *fun.RouteCtx) error {
 		ctx := rc.RequestCtx
-		su, err := routeUser(st, ctx)
-		if err != nil {
+		if err := routeUser(st, ctx); err != nil {
 			routeJSONErr(ctx, 401, "未登录或登录已失效")
 			return nil
 		}
 		id, _ := strconv.ParseInt(string(ctx.QueryArgs().Peek("id")), 10, 64)
 		f, err := st.GetFile(id)
-		if err != nil || f.UserID != su.User.Id {
+		if err != nil {
 			ctx.SetStatusCode(404)
 			ctx.SetBodyString("文件不存在")
 			return nil

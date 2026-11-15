@@ -66,8 +66,8 @@ docker compose logs -f                                       # 看日志
 |---|---|---|
 | `CYIBOX_PORT` | `8890` | 后端监听端口 |
 | `CYIBOX_DB` | `./data/cyibox.db` | SQLite 路径（自动创建） |
-| `CYIBOX_ADMIN_NAME` | `admin` | 初始管理员名 |
-| `CYIBOX_ADMIN_PASSWORD` | `admin123` | 初始管理员密码（**上线前必改**） |
+| `CYIBOX_ADMIN_NAME` | `admin` | 显示名（登录只验密码，无用户名） |
+| `CYIBOX_ADMIN_PASSWORD` | `admin123` | 初始登录密码（**上线前必改**） |
 | `CYIBOX_CORS` | 空 | 跨域白名单（逗号分隔） |
 | `CYIBOX_VAULT_KEY` | `<db目录>/vault.key` | AES-GCM 密钥文件（自动生成） |
 | `CYIBOX_DISK_DIR` | `<db目录>/files` | 网盘文件目录 |

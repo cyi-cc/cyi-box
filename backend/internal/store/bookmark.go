@@ -8,7 +8,6 @@ import (
 
 type Bookmark struct {
 	Id        int64
-	UserID    int64
 	Title     string
 	Url       string
 	Icon      string
@@ -18,13 +17,13 @@ type Bookmark struct {
 
 func bookmarkFromRow(b db.Bookmark) Bookmark {
 	return Bookmark{
-		Id: b.ID, UserID: b.UserID, Title: b.Title, Url: b.Url,
+		Id: b.ID, Title: b.Title, Url: b.Url,
 		Icon: b.Icon, Sort: b.Sort, CreatedAt: b.CreatedAt,
 	}
 }
 
-func (s *Store) ListBookmarks(userID int64) ([]Bookmark, error) {
-	rows, err := s.q.ListBookmarks(storeCtx, userID)
+func (s *Store) ListBookmarks() ([]Bookmark, error) {
+	rows, err := s.q.ListBookmarks(storeCtx)
 	if err != nil {
 		return nil, err
 	}
@@ -39,7 +38,7 @@ func (s *Store) SaveBookmark(b *Bookmark) error {
 	if b.Id > 0 {
 		n, err := s.q.UpdateBookmark(storeCtx, db.UpdateBookmarkParams{
 			Title: b.Title, Url: b.Url, Icon: b.Icon, Sort: b.Sort,
-			ID: b.Id, UserID: b.UserID,
+			ID: b.Id,
 		})
 		if err != nil {
 			return err
@@ -51,7 +50,7 @@ func (s *Store) SaveBookmark(b *Bookmark) error {
 	}
 	now := time.Now().Unix()
 	id, err := s.q.InsertBookmark(storeCtx, db.InsertBookmarkParams{
-		UserID: b.UserID, Title: b.Title, Url: b.Url, Icon: b.Icon,
+		Title: b.Title, Url: b.Url, Icon: b.Icon,
 		Sort: b.Sort, CreatedAt: now,
 	})
 	if err != nil {
@@ -61,8 +60,8 @@ func (s *Store) SaveBookmark(b *Bookmark) error {
 	return nil
 }
 
-func (s *Store) DeleteBookmark(userID, id int64) error {
-	n, err := s.q.DeleteBookmark(storeCtx, db.DeleteBookmarkParams{UserID: userID, ID: id})
+func (s *Store) DeleteBookmark(id int64) error {
+	n, err := s.q.DeleteBookmark(storeCtx, id)
 	if err != nil {
 		return err
 	}

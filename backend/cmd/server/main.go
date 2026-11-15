@@ -29,10 +29,10 @@ func main() {
 	cfg := mustWired(fun.Wired[config.Config]())
 	st := mustWired(fun.Wired[store.Store]())
 
-	// 首启种子：空库写 admin + 示例工具
+	// 首启种子：空库写初始密码 + 示例工具
 	if hash, err := bcrypt.GenerateFromPassword([]byte(cfg.AdminPassword), bcrypt.DefaultCost); err == nil {
-		if err := st.SeedAdmin(string(hash)); err != nil {
-			log.Fatalf("boot: seed admin failed: %v", err)
+		if err := st.SeedPassword(string(hash)); err != nil {
+			log.Fatalf("boot: seed password failed: %v", err)
 		}
 	}
 	if err := st.SeedTools(); err != nil {
@@ -48,7 +48,6 @@ func main() {
 	}
 	for _, err := range []error{
 		f.BindService(&service.AuthSvc{}),
-		f.BindService(&service.UserSvc{}),
 		f.BindService(&service.DashboardSvc{}),
 		f.BindService(&service.ToolSvc{}),
 		f.BindService(&service.VaultSvc{}),

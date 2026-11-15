@@ -19,11 +19,10 @@ type BookmarkSvc struct {
 }
 
 func (s *BookmarkSvc) List() ([]dto.BookmarkView, error) {
-	su, err := sessionFrom(s.RequestCtx)
-	if err != nil {
+	if _, err := sessionToken(s.RequestCtx); err != nil {
 		return nil, err
 	}
-	items, err := s.Store.ListBookmarks(su.User.Id)
+	items, err := s.Store.ListBookmarks()
 	if err != nil {
 		return nil, fmt.Errorf("bookmark: list failed: %w", err)
 	}
@@ -35,8 +34,7 @@ func (s *BookmarkSvc) List() ([]dto.BookmarkView, error) {
 }
 
 func (s *BookmarkSvc) Save(d dto.SaveBookmarkDto) (dto.BookmarkView, error) {
-	su, err := sessionFrom(s.RequestCtx)
-	if err != nil {
+	if _, err := sessionToken(s.RequestCtx); err != nil {
 		return dto.BookmarkView{}, err
 	}
 	title := strings.TrimSpace(d.Title)
@@ -53,7 +51,7 @@ func (s *BookmarkSvc) Save(d dto.SaveBookmarkDto) (dto.BookmarkView, error) {
 		return dto.BookmarkView{}, fun.Error(4001, "网址无效，需 http(s) 地址")
 	}
 
-	b := store.Bookmark{UserID: su.User.Id, Title: title, Url: raw}
+	b := store.Bookmark{Title: title, Url: raw}
 	if d.Id != nil {
 		b.Id = *d.Id
 	}
@@ -73,11 +71,10 @@ func (s *BookmarkSvc) Save(d dto.SaveBookmarkDto) (dto.BookmarkView, error) {
 }
 
 func (s *BookmarkSvc) Delete(d dto.BookmarkIdDto) (dto.OkView, error) {
-	su, err := sessionFrom(s.RequestCtx)
-	if err != nil {
+	if _, err := sessionToken(s.RequestCtx); err != nil {
 		return dto.OkView{}, err
 	}
-	if err := s.Store.DeleteBookmark(su.User.Id, d.Id); err != nil {
+	if err := s.Store.DeleteBookmark(d.Id); err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			return dto.OkView{}, fun.Error(4001, "书签不存在")
 		}

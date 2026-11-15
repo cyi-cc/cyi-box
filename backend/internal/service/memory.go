@@ -119,4 +119,3 @@ func (s *MemorySvc) ResetToken() (dto.MemoryMcpView, error) {
 	}
 	return s.McpInfo()
 }
-

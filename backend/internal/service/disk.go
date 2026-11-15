@@ -19,7 +19,7 @@ import (
 const shareCodeLen = 10
 const shareAlphabet = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
-// DiskSvc 网盘：文件列表/删除/分享链接管理（按用户隔离，属主校验）
+// DiskSvc 网盘：文件列表/删除/分享链接管理
 type DiskSvc struct {
 	fun.Ctx
 	Store *store.Store
@@ -61,11 +61,10 @@ func shareViews(shares []store.Share) []dto.ShareView {
 }
 
 func (s *DiskSvc) List() ([]dto.FileView, error) {
-	su, err := sessionFrom(s.RequestCtx)
-	if err != nil {
+	if _, err := sessionToken(s.RequestCtx); err != nil {
 		return nil, err
 	}
-	files, err := s.Store.ListFiles(su.User.Id)
+	files, err := s.Store.ListFiles()
 	if err != nil {
 		return nil, fmt.Errorf("disk: list failed: %w", err)
 	}
@@ -74,18 +73,17 @@ func (s *DiskSvc) List() ([]dto.FileView, error) {
 
 // DeleteFile 删文件：库记录 + 磁盘文件 + 关联分享一起清
 func (s *DiskSvc) DeleteFile(d dto.IdDto) (dto.OkView, error) {
-	su, err := sessionFrom(s.RequestCtx)
-	if err != nil {
+	if _, err := sessionToken(s.RequestCtx); err != nil {
 		return dto.OkView{}, err
 	}
 	f, err := s.Store.GetFile(d.Id)
-	if errors.Is(err, store.ErrNotFound) || f.UserID != su.User.Id {
+	if errors.Is(err, store.ErrNotFound) {
 		return dto.OkView{}, fun.Error(4004, "文件不存在")
 	}
 	if err != nil {
 		return dto.OkView{}, err
 	}
-	if _, err := s.Store.DeleteFile(d.Id, su.User.Id); err != nil {
+	if _, err := s.Store.DeleteFile(d.Id); err != nil {
 		return dto.OkView{}, fmt.Errorf("disk: delete failed: %w", err)
 	}
 	_ = s.Store.DeleteSharesByFile(d.Id)
@@ -95,12 +93,11 @@ func (s *DiskSvc) DeleteFile(d dto.IdDto) (dto.OkView, error) {
 
 // CreateShare ExpireMinutes=0 永久；>0 限时分享
 func (s *DiskSvc) CreateShare(d dto.CreateShareDto) (dto.ShareView, error) {
-	su, err := sessionFrom(s.RequestCtx)
-	if err != nil {
+	if _, err := sessionToken(s.RequestCtx); err != nil {
 		return dto.ShareView{}, err
 	}
 	f, err := s.Store.GetFile(d.FileId)
-	if errors.Is(err, store.ErrNotFound) || f.UserID != su.User.Id {
+	if errors.Is(err, store.ErrNotFound) {
 		return dto.ShareView{}, fun.Error(4004, "文件不存在")
 	}
 	if err != nil {
@@ -118,7 +115,7 @@ func (s *DiskSvc) CreateShare(d dto.CreateShareDto) (dto.ShareView, error) {
 		expires = time.Now().Add(time.Duration(d.ExpireMinutes) * time.Minute).Unix()
 	}
 	sh := store.Share{
-		Code: code, FileID: f.Id, UserID: su.User.Id,
+		Code: code, FileID: f.Id,
 		FileName: f.Name, ExpiresAt: expires,
 	}
 	if err := s.Store.InsertShare(&sh); err != nil {
@@ -128,11 +125,10 @@ func (s *DiskSvc) CreateShare(d dto.CreateShareDto) (dto.ShareView, error) {
 }
 
 func (s *DiskSvc) ListShares() ([]dto.ShareView, error) {
-	su, err := sessionFrom(s.RequestCtx)
-	if err != nil {
+	if _, err := sessionToken(s.RequestCtx); err != nil {
 		return nil, err
 	}
-	shares, err := s.Store.ListShares(su.User.Id)
+	shares, err := s.Store.ListShares()
 	if err != nil {
 		return nil, fmt.Errorf("disk: list shares failed: %w", err)
 	}
@@ -140,11 +136,10 @@ func (s *DiskSvc) ListShares() ([]dto.ShareView, error) {
 }
 
 func (s *DiskSvc) DeleteShare(d dto.IdDto) (dto.OkView, error) {
-	su, err := sessionFrom(s.RequestCtx)
-	if err != nil {
+	if _, err := sessionToken(s.RequestCtx); err != nil {
 		return dto.OkView{}, err
 	}
-	n, err := s.Store.DeleteShare(d.Id, su.User.Id)
+	n, err := s.Store.DeleteShare(d.Id)
 	if err != nil {
 		return dto.OkView{}, fmt.Errorf("disk: delete share failed: %w", err)
 	}

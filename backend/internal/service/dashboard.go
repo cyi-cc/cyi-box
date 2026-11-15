@@ -28,9 +28,6 @@ func (s *DashboardSvc) Stats() (dto.StatsView, error) {
 
 	// 会话概况
 	var err error
-	if view.TotalUsers, err = s.Store.CountUsers(); err != nil {
-		return view, fmt.Errorf("dashboard: count users failed: %w", err)
-	}
 	if view.ActiveSessions, err = s.Store.CountActiveSessions(); err != nil {
 		return view, fmt.Errorf("dashboard: count sessions failed: %w", err)
 	}
@@ -60,10 +57,8 @@ func (s *DashboardSvc) Stats() (dto.StatsView, error) {
 	if ls, err := q.LicenseCardStatsAll(ctx, now.Unix()); err == nil {
 		view.LicenseCards, view.LicenseActive = ls.Total, anyI64(ls.Active)
 	}
-	if su, err := sessionFrom(s.RequestCtx); err == nil {
-		view.Bookmarks, _ = q.CountBookmarksByUser(ctx, su.User.Id)
-		view.VaultItems, _ = q.CountVaultByUser(ctx, su.User.Id)
-	}
+	view.Bookmarks, _ = q.CountBookmarks(ctx)
+	view.VaultItems, _ = q.CountVault(ctx)
 
 	// 支付：今日 + 累计 + 14 天收入趋势 + 最近成交
 	dayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).Unix()

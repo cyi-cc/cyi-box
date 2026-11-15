@@ -42,45 +42,12 @@ func (q *Queries) CountActiveSessions(ctx context.Context, expiresAt int64) (int
 	return count, err
 }
 
-const countActiveUsers = `-- name: CountActiveUsers :one
-SELECT COUNT(*) FROM users WHERE status = 'active'
+const countBookmarks = `-- name: CountBookmarks :one
+SELECT COUNT(*) FROM bookmarks
 `
 
-func (q *Queries) CountActiveUsers(ctx context.Context) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countActiveUsers)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
-const countAdmins = `-- name: CountAdmins :one
-SELECT COUNT(*) FROM users WHERE role = 'admin' AND status = 'active'
-`
-
-func (q *Queries) CountAdmins(ctx context.Context) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countAdmins)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
-const countAllUsers = `-- name: CountAllUsers :one
-SELECT COUNT(*) FROM users
-`
-
-func (q *Queries) CountAllUsers(ctx context.Context) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countAllUsers)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
-const countBookmarksByUser = `-- name: CountBookmarksByUser :one
-SELECT COUNT(*) FROM bookmarks WHERE user_id = ?
-`
-
-func (q *Queries) CountBookmarksByUser(ctx context.Context, userID int64) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countBookmarksByUser, userID)
+func (q *Queries) CountBookmarks(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countBookmarks)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -214,23 +181,12 @@ func (q *Queries) CountTools(ctx context.Context) (int64, error) {
 	return count, err
 }
 
-const countUsers = `-- name: CountUsers :one
-SELECT COUNT(*) FROM users WHERE name LIKE '%' || ?1 || '%'
+const countVault = `-- name: CountVault :one
+SELECT COUNT(*) FROM vault
 `
 
-func (q *Queries) CountUsers(ctx context.Context, keyword sql.NullString) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countUsers, keyword)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
-const countVaultByUser = `-- name: CountVaultByUser :one
-SELECT COUNT(*) FROM vault WHERE user_id = ?
-`
-
-func (q *Queries) CountVaultByUser(ctx context.Context, userID int64) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countVaultByUser, userID)
+func (q *Queries) CountVault(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countVault)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -321,16 +277,11 @@ func (q *Queries) CreatePayOrder(ctx context.Context, arg CreatePayOrderParams) 
 }
 
 const deleteBookmark = `-- name: DeleteBookmark :execrows
-DELETE FROM bookmarks WHERE user_id = ? AND id = ?
+DELETE FROM bookmarks WHERE id = ?
 `
 
-type DeleteBookmarkParams struct {
-	UserID int64
-	ID     int64
-}
-
-func (q *Queries) DeleteBookmark(ctx context.Context, arg DeleteBookmarkParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, deleteBookmark, arg.UserID, arg.ID)
+func (q *Queries) DeleteBookmark(ctx context.Context, id int64) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteBookmark, id)
 	if err != nil {
 		return 0, err
 	}
@@ -362,16 +313,11 @@ func (q *Queries) DeleteDbconn(ctx context.Context, id int64) (int64, error) {
 }
 
 const deleteFile = `-- name: DeleteFile :execrows
-DELETE FROM files WHERE id = ? AND user_id = ?
+DELETE FROM files WHERE id = ?
 `
 
-type DeleteFileParams struct {
-	ID     int64
-	UserID int64
-}
-
-func (q *Queries) DeleteFile(ctx context.Context, arg DeleteFileParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, deleteFile, arg.ID, arg.UserID)
+func (q *Queries) DeleteFile(ctx context.Context, id int64) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteFile, id)
 	if err != nil {
 		return 0, err
 	}
@@ -409,16 +355,11 @@ func (q *Queries) DeleteMemory(ctx context.Context, k string) (int64, error) {
 }
 
 const deleteOtherSessions = `-- name: DeleteOtherSessions :exec
-DELETE FROM sessions WHERE user_id = ? AND token != ?
+DELETE FROM sessions WHERE token != ?
 `
 
-type DeleteOtherSessionsParams struct {
-	UserID int64
-	Token  string
-}
-
-func (q *Queries) DeleteOtherSessions(ctx context.Context, arg DeleteOtherSessionsParams) error {
-	_, err := q.db.ExecContext(ctx, deleteOtherSessions, arg.UserID, arg.Token)
+func (q *Queries) DeleteOtherSessions(ctx context.Context, token string) error {
+	_, err := q.db.ExecContext(ctx, deleteOtherSessions, token)
 	return err
 }
 
@@ -444,16 +385,11 @@ func (q *Queries) DeleteSession(ctx context.Context, token string) error {
 }
 
 const deleteShare = `-- name: DeleteShare :execrows
-DELETE FROM shares WHERE id = ? AND user_id = ?
+DELETE FROM shares WHERE id = ?
 `
 
-type DeleteShareParams struct {
-	ID     int64
-	UserID int64
-}
-
-func (q *Queries) DeleteShare(ctx context.Context, arg DeleteShareParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, deleteShare, arg.ID, arg.UserID)
+func (q *Queries) DeleteShare(ctx context.Context, id int64) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteShare, id)
 	if err != nil {
 		return 0, err
 	}
@@ -478,26 +414,12 @@ func (q *Queries) DeleteTool(ctx context.Context, id int64) error {
 	return err
 }
 
-const deleteUser = `-- name: DeleteUser :exec
-DELETE FROM users WHERE id = ?
-`
-
-func (q *Queries) DeleteUser(ctx context.Context, id int64) error {
-	_, err := q.db.ExecContext(ctx, deleteUser, id)
-	return err
-}
-
 const deleteVault = `-- name: DeleteVault :execrows
-DELETE FROM vault WHERE user_id = ? AND id = ?
+DELETE FROM vault WHERE id = ?
 `
 
-type DeleteVaultParams struct {
-	UserID int64
-	ID     int64
-}
-
-func (q *Queries) DeleteVault(ctx context.Context, arg DeleteVaultParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, deleteVault, arg.UserID, arg.ID)
+func (q *Queries) DeleteVault(ctx context.Context, id int64) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteVault, id)
 	if err != nil {
 		return 0, err
 	}
@@ -568,7 +490,7 @@ func (q *Queries) GetDbconn(ctx context.Context, id int64) (Dbconn, error) {
 }
 
 const getFile = `-- name: GetFile :one
-SELECT id, user_id, name, stored, size, mime, created_at FROM files WHERE id = ?
+SELECT id, name, stored, size, mime, created_at FROM files WHERE id = ?
 `
 
 func (q *Queries) GetFile(ctx context.Context, id int64) (File, error) {
@@ -576,7 +498,6 @@ func (q *Queries) GetFile(ctx context.Context, id int64) (File, error) {
 	var i File
 	err := row.Scan(
 		&i.ID,
-		&i.UserID,
 		&i.Name,
 		&i.Stored,
 		&i.Size,
@@ -782,36 +703,15 @@ func (q *Queries) GetServer(ctx context.Context, id int64) (Server, error) {
 	return i, err
 }
 
-const getSessionUser = `-- name: GetSessionUser :one
-SELECT u.id, u.name, u.password_hash, u.role, u.status, u.created_at, u.updated_at, s.expires_at
-FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ?
+const getSessionExpiry = `-- name: GetSessionExpiry :one
+SELECT expires_at FROM sessions WHERE token = ?
 `
 
-type GetSessionUserRow struct {
-	ID           int64
-	Name         string
-	PasswordHash string
-	Role         string
-	Status       string
-	CreatedAt    int64
-	UpdatedAt    int64
-	ExpiresAt    int64
-}
-
-func (q *Queries) GetSessionUser(ctx context.Context, token string) (GetSessionUserRow, error) {
-	row := q.db.QueryRowContext(ctx, getSessionUser, token)
-	var i GetSessionUserRow
-	err := row.Scan(
-		&i.ID,
-		&i.Name,
-		&i.PasswordHash,
-		&i.Role,
-		&i.Status,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.ExpiresAt,
-	)
-	return i, err
+func (q *Queries) GetSessionExpiry(ctx context.Context, token string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getSessionExpiry, token)
+	var expires_at int64
+	err := row.Scan(&expires_at)
+	return expires_at, err
 }
 
 const getSetting = `-- name: GetSetting :one
@@ -826,7 +726,7 @@ func (q *Queries) GetSetting(ctx context.Context, k string) (string, error) {
 }
 
 const getShareByCode = `-- name: GetShareByCode :one
-SELECT sh.id, sh.code, sh.file_id, sh.user_id, sh.file_name, sh.expires_at, sh.downloads, sh.created_at,
+SELECT sh.id, sh.code, sh.file_id, sh.file_name, sh.expires_at, sh.downloads, sh.created_at,
        f.name, f.stored, f.size, f.mime
 FROM shares sh JOIN files f ON f.id = sh.file_id WHERE sh.code = ?
 `
@@ -835,7 +735,6 @@ type GetShareByCodeRow struct {
 	ID        int64
 	Code      string
 	FileID    int64
-	UserID    int64
 	FileName  string
 	ExpiresAt int64
 	Downloads int64
@@ -853,7 +752,6 @@ func (q *Queries) GetShareByCode(ctx context.Context, code string) (GetShareByCo
 		&i.ID,
 		&i.Code,
 		&i.FileID,
-		&i.UserID,
 		&i.FileName,
 		&i.ExpiresAt,
 		&i.Downloads,
@@ -866,59 +764,15 @@ func (q *Queries) GetShareByCode(ctx context.Context, code string) (GetShareByCo
 	return i, err
 }
 
-const getUserByID = `-- name: GetUserByID :one
-SELECT id, name, password_hash, role, status, created_at, updated_at FROM users WHERE id = ?
-`
-
-func (q *Queries) GetUserByID(ctx context.Context, id int64) (User, error) {
-	row := q.db.QueryRowContext(ctx, getUserByID, id)
-	var i User
-	err := row.Scan(
-		&i.ID,
-		&i.Name,
-		&i.PasswordHash,
-		&i.Role,
-		&i.Status,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-const getUserByName = `-- name: GetUserByName :one
-SELECT id, name, password_hash, role, status, created_at, updated_at FROM users WHERE name = ? LIMIT 1
-`
-
-func (q *Queries) GetUserByName(ctx context.Context, name string) (User, error) {
-	row := q.db.QueryRowContext(ctx, getUserByName, name)
-	var i User
-	err := row.Scan(
-		&i.ID,
-		&i.Name,
-		&i.PasswordHash,
-		&i.Role,
-		&i.Status,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
 const getVault = `-- name: GetVault :one
-SELECT id, user_id, title, username, password_enc, url, note, totp_enc, created_at, updated_at FROM vault WHERE user_id = ? AND id = ?
+SELECT id, title, username, password_enc, url, note, totp_enc, created_at, updated_at FROM vault WHERE id = ?
 `
 
-type GetVaultParams struct {
-	UserID int64
-	ID     int64
-}
-
-func (q *Queries) GetVault(ctx context.Context, arg GetVaultParams) (Vault, error) {
-	row := q.db.QueryRowContext(ctx, getVault, arg.UserID, arg.ID)
+func (q *Queries) GetVault(ctx context.Context, id int64) (Vault, error) {
+	row := q.db.QueryRowContext(ctx, getVault, id)
 	var i Vault
 	err := row.Scan(
 		&i.ID,
-		&i.UserID,
 		&i.Title,
 		&i.Username,
 		&i.PasswordEnc,
@@ -950,11 +804,10 @@ func (q *Queries) IncShareDownloads(ctx context.Context, code string) error {
 }
 
 const insertBookmark = `-- name: InsertBookmark :execlastid
-INSERT INTO bookmarks(user_id, title, url, icon, sort, created_at) VALUES(?, ?, ?, ?, ?, ?)
+INSERT INTO bookmarks(title, url, icon, sort, created_at) VALUES(?, ?, ?, ?, ?)
 `
 
 type InsertBookmarkParams struct {
-	UserID    int64
 	Title     string
 	Url       string
 	Icon      string
@@ -964,7 +817,6 @@ type InsertBookmarkParams struct {
 
 func (q *Queries) InsertBookmark(ctx context.Context, arg InsertBookmarkParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, insertBookmark,
-		arg.UserID,
 		arg.Title,
 		arg.Url,
 		arg.Icon,
@@ -1043,11 +895,10 @@ func (q *Queries) InsertDbconn(ctx context.Context, arg InsertDbconnParams) (int
 }
 
 const insertFile = `-- name: InsertFile :execlastid
-INSERT INTO files(user_id, name, stored, size, mime, created_at) VALUES(?, ?, ?, ?, ?, ?)
+INSERT INTO files(name, stored, size, mime, created_at) VALUES(?, ?, ?, ?, ?)
 `
 
 type InsertFileParams struct {
-	UserID    int64
 	Name      string
 	Stored    string
 	Size      int64
@@ -1057,7 +908,6 @@ type InsertFileParams struct {
 
 func (q *Queries) InsertFile(ctx context.Context, arg InsertFileParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, insertFile,
-		arg.UserID,
 		arg.Name,
 		arg.Stored,
 		arg.Size,
@@ -1106,34 +956,27 @@ func (q *Queries) InsertServer(ctx context.Context, arg InsertServerParams) (int
 }
 
 const insertSession = `-- name: InsertSession :exec
-INSERT INTO sessions(token, user_id, created_at, expires_at) VALUES(?, ?, ?, ?)
+INSERT INTO sessions(token, created_at, expires_at) VALUES(?, ?, ?)
 `
 
 type InsertSessionParams struct {
 	Token     string
-	UserID    int64
 	CreatedAt int64
 	ExpiresAt int64
 }
 
 func (q *Queries) InsertSession(ctx context.Context, arg InsertSessionParams) error {
-	_, err := q.db.ExecContext(ctx, insertSession,
-		arg.Token,
-		arg.UserID,
-		arg.CreatedAt,
-		arg.ExpiresAt,
-	)
+	_, err := q.db.ExecContext(ctx, insertSession, arg.Token, arg.CreatedAt, arg.ExpiresAt)
 	return err
 }
 
 const insertShare = `-- name: InsertShare :execlastid
-INSERT INTO shares(code, file_id, user_id, file_name, expires_at, created_at) VALUES(?, ?, ?, ?, ?, ?)
+INSERT INTO shares(code, file_id, file_name, expires_at, created_at) VALUES(?, ?, ?, ?, ?)
 `
 
 type InsertShareParams struct {
 	Code      string
 	FileID    int64
-	UserID    int64
 	FileName  string
 	ExpiresAt int64
 	CreatedAt int64
@@ -1143,7 +986,6 @@ func (q *Queries) InsertShare(ctx context.Context, arg InsertShareParams) (int64
 	result, err := q.db.ExecContext(ctx, insertShare,
 		arg.Code,
 		arg.FileID,
-		arg.UserID,
 		arg.FileName,
 		arg.ExpiresAt,
 		arg.CreatedAt,
@@ -1182,40 +1024,12 @@ func (q *Queries) InsertTool(ctx context.Context, arg InsertToolParams) (int64, 
 	return result.LastInsertId()
 }
 
-const insertUser = `-- name: InsertUser :execlastid
-INSERT INTO users(name, password_hash, role, status, created_at, updated_at)
-VALUES(?, ?, ?, 'active', ?, ?)
-`
-
-type InsertUserParams struct {
-	Name         string
-	PasswordHash string
-	Role         string
-	CreatedAt    int64
-	UpdatedAt    int64
-}
-
-func (q *Queries) InsertUser(ctx context.Context, arg InsertUserParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, insertUser,
-		arg.Name,
-		arg.PasswordHash,
-		arg.Role,
-		arg.CreatedAt,
-		arg.UpdatedAt,
-	)
-	if err != nil {
-		return 0, err
-	}
-	return result.LastInsertId()
-}
-
 const insertVault = `-- name: InsertVault :execlastid
-INSERT INTO vault(user_id, title, username, password_enc, url, note, totp_enc, created_at, updated_at)
-VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO vault(title, username, password_enc, url, note, totp_enc, created_at, updated_at)
+VALUES(?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertVaultParams struct {
-	UserID      int64
 	Title       string
 	Username    string
 	PasswordEnc string
@@ -1228,7 +1042,6 @@ type InsertVaultParams struct {
 
 func (q *Queries) InsertVault(ctx context.Context, arg InsertVaultParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, insertVault,
-		arg.UserID,
 		arg.Title,
 		arg.Username,
 		arg.PasswordEnc,
@@ -1298,11 +1111,11 @@ func (q *Queries) LicenseCardStatsAll(ctx context.Context, expiresAt int64) (Lic
 }
 
 const listBookmarks = `-- name: ListBookmarks :many
-SELECT id, user_id, title, url, icon, sort, created_at FROM bookmarks WHERE user_id = ? ORDER BY sort, id
+SELECT id, title, url, icon, sort, created_at FROM bookmarks ORDER BY sort, id
 `
 
-func (q *Queries) ListBookmarks(ctx context.Context, userID int64) ([]Bookmark, error) {
-	rows, err := q.db.QueryContext(ctx, listBookmarks, userID)
+func (q *Queries) ListBookmarks(ctx context.Context) ([]Bookmark, error) {
+	rows, err := q.db.QueryContext(ctx, listBookmarks)
 	if err != nil {
 		return nil, err
 	}
@@ -1312,7 +1125,6 @@ func (q *Queries) ListBookmarks(ctx context.Context, userID int64) ([]Bookmark, 
 		var i Bookmark
 		if err := rows.Scan(
 			&i.ID,
-			&i.UserID,
 			&i.Title,
 			&i.Url,
 			&i.Icon,
@@ -1443,11 +1255,11 @@ func (q *Queries) ListEnabledTools(ctx context.Context) ([]Tool, error) {
 }
 
 const listFiles = `-- name: ListFiles :many
-SELECT id, user_id, name, stored, size, mime, created_at FROM files WHERE user_id = ? ORDER BY id DESC
+SELECT id, name, stored, size, mime, created_at FROM files ORDER BY id DESC
 `
 
-func (q *Queries) ListFiles(ctx context.Context, userID int64) ([]File, error) {
-	rows, err := q.db.QueryContext(ctx, listFiles, userID)
+func (q *Queries) ListFiles(ctx context.Context) ([]File, error) {
+	rows, err := q.db.QueryContext(ctx, listFiles)
 	if err != nil {
 		return nil, err
 	}
@@ -1457,7 +1269,6 @@ func (q *Queries) ListFiles(ctx context.Context, userID int64) ([]File, error) {
 		var i File
 		if err := rows.Scan(
 			&i.ID,
-			&i.UserID,
 			&i.Name,
 			&i.Stored,
 			&i.Size,
@@ -1794,11 +1605,11 @@ func (q *Queries) ListServers(ctx context.Context) ([]Server, error) {
 }
 
 const listShares = `-- name: ListShares :many
-SELECT id, code, file_id, user_id, file_name, expires_at, downloads, created_at FROM shares WHERE user_id = ? ORDER BY id DESC
+SELECT id, code, file_id, file_name, expires_at, downloads, created_at FROM shares ORDER BY id DESC
 `
 
-func (q *Queries) ListShares(ctx context.Context, userID int64) ([]Share, error) {
-	rows, err := q.db.QueryContext(ctx, listShares, userID)
+func (q *Queries) ListShares(ctx context.Context) ([]Share, error) {
+	rows, err := q.db.QueryContext(ctx, listShares)
 	if err != nil {
 		return nil, err
 	}
@@ -1810,7 +1621,6 @@ func (q *Queries) ListShares(ctx context.Context, userID int64) ([]Share, error)
 			&i.ID,
 			&i.Code,
 			&i.FileID,
-			&i.UserID,
 			&i.FileName,
 			&i.ExpiresAt,
 			&i.Downloads,
@@ -1864,64 +1674,16 @@ func (q *Queries) ListTools(ctx context.Context) ([]Tool, error) {
 	return items, nil
 }
 
-const listUsers = `-- name: ListUsers :many
-SELECT id, name, password_hash, role, status, created_at, updated_at FROM users
-WHERE name LIKE '%' || ?3 || '%'
-ORDER BY id LIMIT ? OFFSET ?
-`
-
-type ListUsersParams struct {
-	Keyword sql.NullString
-	Limit   int64
-	Offset  int64
-}
-
-func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]User, error) {
-	rows, err := q.db.QueryContext(ctx, listUsers, arg.Keyword, arg.Limit, arg.Offset)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []User{}
-	for rows.Next() {
-		var i User
-		if err := rows.Scan(
-			&i.ID,
-			&i.Name,
-			&i.PasswordHash,
-			&i.Role,
-			&i.Status,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listVault = `-- name: ListVault :many
-SELECT id, user_id, title, username, password_enc, url, note, totp_enc, created_at, updated_at FROM vault WHERE user_id = ?
-  AND (title LIKE '%' || ?2 || '%'
-       OR username LIKE '%' || ?2 || '%'
-       OR url LIKE '%' || ?2 || '%')
+SELECT id, title, username, password_enc, url, note, totp_enc, created_at, updated_at FROM vault
+WHERE title LIKE '%' || ?1 || '%'
+   OR username LIKE '%' || ?1 || '%'
+   OR url LIKE '%' || ?1 || '%'
 ORDER BY updated_at DESC
 `
 
-type ListVaultParams struct {
-	UserID  int64
-	Keyword sql.NullString
-}
-
-func (q *Queries) ListVault(ctx context.Context, arg ListVaultParams) ([]Vault, error) {
-	rows, err := q.db.QueryContext(ctx, listVault, arg.UserID, arg.Keyword)
+func (q *Queries) ListVault(ctx context.Context, keyword sql.NullString) ([]Vault, error) {
+	rows, err := q.db.QueryContext(ctx, listVault, keyword)
 	if err != nil {
 		return nil, err
 	}
@@ -1931,7 +1693,6 @@ func (q *Queries) ListVault(ctx context.Context, arg ListVaultParams) ([]Vault, 
 		var i Vault
 		if err := rows.Scan(
 			&i.ID,
-			&i.UserID,
 			&i.Title,
 			&i.Username,
 			&i.PasswordEnc,
@@ -2219,16 +1980,15 @@ func (q *Queries) TouchSession(ctx context.Context, arg TouchSessionParams) erro
 }
 
 const updateBookmark = `-- name: UpdateBookmark :execrows
-UPDATE bookmarks SET title = ?, url = ?, icon = ?, sort = ? WHERE id = ? AND user_id = ?
+UPDATE bookmarks SET title = ?, url = ?, icon = ?, sort = ? WHERE id = ?
 `
 
 type UpdateBookmarkParams struct {
-	Title  string
-	Url    string
-	Icon   string
-	Sort   int64
-	ID     int64
-	UserID int64
+	Title string
+	Url   string
+	Icon  string
+	Sort  int64
+	ID    int64
 }
 
 func (q *Queries) UpdateBookmark(ctx context.Context, arg UpdateBookmarkParams) (int64, error) {
@@ -2238,7 +1998,6 @@ func (q *Queries) UpdateBookmark(ctx context.Context, arg UpdateBookmarkParams) 
 		arg.Icon,
 		arg.Sort,
 		arg.ID,
-		arg.UserID,
 	)
 	if err != nil {
 		return 0, err
@@ -2381,57 +2140,9 @@ func (q *Queries) UpdateTool(ctx context.Context, arg UpdateToolParams) error {
 	return err
 }
 
-const updateUser = `-- name: UpdateUser :exec
-UPDATE users SET name = ?, role = ?, status = ?, updated_at = ? WHERE id = ?
-`
-
-type UpdateUserParams struct {
-	Name      string
-	Role      string
-	Status    string
-	UpdatedAt int64
-	ID        int64
-}
-
-func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) error {
-	_, err := q.db.ExecContext(ctx, updateUser,
-		arg.Name,
-		arg.Role,
-		arg.Status,
-		arg.UpdatedAt,
-		arg.ID,
-	)
-	return err
-}
-
-const updateUserPassword = `-- name: UpdateUserPassword :exec
-UPDATE users SET name = ?, role = ?, status = ?, password_hash = ?, updated_at = ? WHERE id = ?
-`
-
-type UpdateUserPasswordParams struct {
-	Name         string
-	Role         string
-	Status       string
-	PasswordHash string
-	UpdatedAt    int64
-	ID           int64
-}
-
-func (q *Queries) UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error {
-	_, err := q.db.ExecContext(ctx, updateUserPassword,
-		arg.Name,
-		arg.Role,
-		arg.Status,
-		arg.PasswordHash,
-		arg.UpdatedAt,
-		arg.ID,
-	)
-	return err
-}
-
 const updateVault = `-- name: UpdateVault :execrows
 UPDATE vault SET title = ?, username = ?, password_enc = ?, url = ?, note = ?, totp_enc = ?, updated_at = ?
-WHERE id = ? AND user_id = ?
+WHERE id = ?
 `
 
 type UpdateVaultParams struct {
@@ -2443,7 +2154,6 @@ type UpdateVaultParams struct {
 	TotpEnc     string
 	UpdatedAt   int64
 	ID          int64
-	UserID      int64
 }
 
 func (q *Queries) UpdateVault(ctx context.Context, arg UpdateVaultParams) (int64, error) {
@@ -2456,7 +2166,6 @@ func (q *Queries) UpdateVault(ctx context.Context, arg UpdateVaultParams) (int64
 		arg.TotpEnc,
 		arg.UpdatedAt,
 		arg.ID,
-		arg.UserID,
 	)
 	if err != nil {
 		return 0, err

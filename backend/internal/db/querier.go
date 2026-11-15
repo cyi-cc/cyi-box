@@ -12,10 +12,7 @@ import (
 type Querier interface {
 	ActivateLicenseCard(ctx context.Context, arg ActivateLicenseCardParams) error
 	CountActiveSessions(ctx context.Context, expiresAt int64) (int64, error)
-	CountActiveUsers(ctx context.Context) (int64, error)
-	CountAdmins(ctx context.Context) (int64, error)
-	CountAllUsers(ctx context.Context) (int64, error)
-	CountBookmarksByUser(ctx context.Context, userID int64) (int64, error)
+	CountBookmarks(ctx context.Context) (int64, error)
 	CountDbconns(ctx context.Context) (int64, error)
 	CountFilesAll(ctx context.Context) (int64, error)
 	CountLicenseApps(ctx context.Context) (int64, error)
@@ -25,26 +22,24 @@ type Querier interface {
 	CountServers(ctx context.Context) (int64, error)
 	CountTodayLogins(ctx context.Context) (int64, error)
 	CountTools(ctx context.Context) (int64, error)
-	CountUsers(ctx context.Context, keyword sql.NullString) (int64, error)
-	CountVaultByUser(ctx context.Context, userID int64) (int64, error)
+	CountVault(ctx context.Context) (int64, error)
 	CreateLicenseApp(ctx context.Context, arg CreateLicenseAppParams) (int64, error)
 	CreateLicenseCard(ctx context.Context, arg CreateLicenseCardParams) error
 	CreatePayOrder(ctx context.Context, arg CreatePayOrderParams) (int64, error)
-	DeleteBookmark(ctx context.Context, arg DeleteBookmarkParams) (int64, error)
+	DeleteBookmark(ctx context.Context, id int64) (int64, error)
 	DeleteCaptchaKey(ctx context.Context, id int64) (int64, error)
 	DeleteDbconn(ctx context.Context, id int64) (int64, error)
-	DeleteFile(ctx context.Context, arg DeleteFileParams) (int64, error)
+	DeleteFile(ctx context.Context, id int64) (int64, error)
 	DeleteLicenseApp(ctx context.Context, id int64) error
 	DeleteLicenseCard(ctx context.Context, id int64) error
 	DeleteMemory(ctx context.Context, k string) (int64, error)
-	DeleteOtherSessions(ctx context.Context, arg DeleteOtherSessionsParams) error
+	DeleteOtherSessions(ctx context.Context, token string) error
 	DeleteServer(ctx context.Context, id int64) (int64, error)
 	DeleteSession(ctx context.Context, token string) error
-	DeleteShare(ctx context.Context, arg DeleteShareParams) (int64, error)
+	DeleteShare(ctx context.Context, id int64) (int64, error)
 	DeleteSharesByFile(ctx context.Context, fileID int64) error
 	DeleteTool(ctx context.Context, id int64) error
-	DeleteUser(ctx context.Context, id int64) error
-	DeleteVault(ctx context.Context, arg DeleteVaultParams) (int64, error)
+	DeleteVault(ctx context.Context, id int64) (int64, error)
 	GetCaptchaKeyBySecret(ctx context.Context, skey string) (CaptchaKey, error)
 	GetCaptchaKeyBySitekey(ctx context.Context, sitekey string) (CaptchaKey, error)
 	GetDbconn(ctx context.Context, id int64) (Dbconn, error)
@@ -56,12 +51,10 @@ type Querier interface {
 	GetPayOrderByOutNo(ctx context.Context, outTradeNo string) (PayOrder, error)
 	GetPayOrderByTradeNo(ctx context.Context, tradeNo string) (PayOrder, error)
 	GetServer(ctx context.Context, id int64) (Server, error)
-	GetSessionUser(ctx context.Context, token string) (GetSessionUserRow, error)
+	GetSessionExpiry(ctx context.Context, token string) (int64, error)
 	GetSetting(ctx context.Context, k string) (string, error)
 	GetShareByCode(ctx context.Context, code string) (GetShareByCodeRow, error)
-	GetUserByID(ctx context.Context, id int64) (User, error)
-	GetUserByName(ctx context.Context, name string) (User, error)
-	GetVault(ctx context.Context, arg GetVaultParams) (Vault, error)
+	GetVault(ctx context.Context, id int64) (Vault, error)
 	IncPayNotifyAttempts(ctx context.Context, id int64) error
 	IncShareDownloads(ctx context.Context, code string) error
 	InsertBookmark(ctx context.Context, arg InsertBookmarkParams) (int64, error)
@@ -72,25 +65,23 @@ type Querier interface {
 	InsertSession(ctx context.Context, arg InsertSessionParams) error
 	InsertShare(ctx context.Context, arg InsertShareParams) (int64, error)
 	InsertTool(ctx context.Context, arg InsertToolParams) (int64, error)
-	InsertUser(ctx context.Context, arg InsertUserParams) (int64, error)
 	InsertVault(ctx context.Context, arg InsertVaultParams) (int64, error)
 	LicenseCardStats(ctx context.Context, arg LicenseCardStatsParams) (LicenseCardStatsRow, error)
 	LicenseCardStatsAll(ctx context.Context, expiresAt int64) (LicenseCardStatsAllRow, error)
-	ListBookmarks(ctx context.Context, userID int64) ([]Bookmark, error)
+	ListBookmarks(ctx context.Context) ([]Bookmark, error)
 	ListCaptchaKeys(ctx context.Context) ([]CaptchaKey, error)
 	ListDbconns(ctx context.Context) ([]Dbconn, error)
 	ListEnabledTools(ctx context.Context) ([]Tool, error)
-	ListFiles(ctx context.Context, userID int64) ([]File, error)
+	ListFiles(ctx context.Context) ([]File, error)
 	ListLicenseApps(ctx context.Context) ([]ListLicenseAppsRow, error)
 	ListLicenseCards(ctx context.Context, arg ListLicenseCardsParams) ([]LicenseCard, error)
 	ListMemories(ctx context.Context, arg ListMemoriesParams) ([]Memory, error)
 	ListPayOrders(ctx context.Context, arg ListPayOrdersParams) ([]PayOrder, error)
 	ListPendingPayOrders(ctx context.Context) ([]PayOrder, error)
 	ListServers(ctx context.Context) ([]Server, error)
-	ListShares(ctx context.Context, userID int64) ([]Share, error)
+	ListShares(ctx context.Context) ([]Share, error)
 	ListTools(ctx context.Context) ([]Tool, error)
-	ListUsers(ctx context.Context, arg ListUsersParams) ([]User, error)
-	ListVault(ctx context.Context, arg ListVaultParams) ([]Vault, error)
+	ListVault(ctx context.Context, keyword sql.NullString) ([]Vault, error)
 	LoginTrend(ctx context.Context, createdAt int64) ([]LoginTrendRow, error)
 	MemoryProjects(ctx context.Context) ([]MemoryProjectsRow, error)
 	PayDailyPaid(ctx context.Context, paidAt int64) ([]PayDailyPaidRow, error)
@@ -108,8 +99,6 @@ type Querier interface {
 	UpdateLicenseApp(ctx context.Context, arg UpdateLicenseAppParams) error
 	UpdateServer(ctx context.Context, arg UpdateServerParams) (int64, error)
 	UpdateTool(ctx context.Context, arg UpdateToolParams) error
-	UpdateUser(ctx context.Context, arg UpdateUserParams) error
-	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error
 	UpdateVault(ctx context.Context, arg UpdateVaultParams) (int64, error)
 	UpsertMemory(ctx context.Context, arg UpsertMemoryParams) error
 	UpsertSetting(ctx context.Context, arg UpsertSettingParams) error

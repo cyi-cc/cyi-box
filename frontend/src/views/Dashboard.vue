@@ -188,7 +188,7 @@ onBeforeUnmount(() => {
           <div>
             <div class="stat-label">运行时长</div>
             <div class="stat-value" style="font-size:20px">{{ stats ? fmtUptime(stats.uptimeSeconds) : '-' }}</div>
-            <div class="stat-sub">{{ stats?.totalUsers ?? 0 }} 位用户</div>
+            <div class="stat-sub">单用户模式</div>
           </div>
         </div>
       </n-grid-item>

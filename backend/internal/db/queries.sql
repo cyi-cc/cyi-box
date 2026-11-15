@@ -1,51 +1,14 @@
--- name: GetUserByName :one
-SELECT * FROM users WHERE name = ? LIMIT 1;
-
--- name: GetUserByID :one
-SELECT * FROM users WHERE id = ?;
-
--- name: ListUsers :many
-SELECT * FROM users
-WHERE name LIKE '%' || sqlc.arg(keyword) || '%'
-ORDER BY id LIMIT ? OFFSET ?;
-
--- name: CountUsers :one
-SELECT COUNT(*) FROM users WHERE name LIKE '%' || sqlc.arg(keyword) || '%';
-
--- name: CountAllUsers :one
-SELECT COUNT(*) FROM users;
-
--- name: CountActiveUsers :one
-SELECT COUNT(*) FROM users WHERE status = 'active';
-
--- name: CountAdmins :one
-SELECT COUNT(*) FROM users WHERE role = 'admin' AND status = 'active';
-
--- name: InsertUser :execlastid
-INSERT INTO users(name, password_hash, role, status, created_at, updated_at)
-VALUES(?, ?, ?, 'active', ?, ?);
-
--- name: UpdateUser :exec
-UPDATE users SET name = ?, role = ?, status = ?, updated_at = ? WHERE id = ?;
-
--- name: UpdateUserPassword :exec
-UPDATE users SET name = ?, role = ?, status = ?, password_hash = ?, updated_at = ? WHERE id = ?;
-
--- name: DeleteUser :exec
-DELETE FROM users WHERE id = ?;
-
 -- name: InsertSession :exec
-INSERT INTO sessions(token, user_id, created_at, expires_at) VALUES(?, ?, ?, ?);
+INSERT INTO sessions(token, created_at, expires_at) VALUES(?, ?, ?);
 
--- name: GetSessionUser :one
-SELECT u.id, u.name, u.password_hash, u.role, u.status, u.created_at, u.updated_at, s.expires_at
-FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ?;
+-- name: GetSessionExpiry :one
+SELECT expires_at FROM sessions WHERE token = ?;
 
 -- name: DeleteSession :exec
 DELETE FROM sessions WHERE token = ?;
 
 -- name: DeleteOtherSessions :exec
-DELETE FROM sessions WHERE user_id = ? AND token != ?;
+DELETE FROM sessions WHERE token != ?;
 
 -- name: TouchSession :exec
 UPDATE sessions SET expires_at = ? WHERE token = ?;
@@ -80,37 +43,37 @@ DELETE FROM tools WHERE id = ?;
 SELECT COUNT(*) FROM tools WHERE enabled = 1;
 
 -- name: ListVault :many
-SELECT * FROM vault WHERE user_id = ?
-  AND (title LIKE '%' || sqlc.arg(keyword) || '%'
-       OR username LIKE '%' || sqlc.arg(keyword) || '%'
-       OR url LIKE '%' || sqlc.arg(keyword) || '%')
+SELECT * FROM vault
+WHERE title LIKE '%' || sqlc.arg(keyword) || '%'
+   OR username LIKE '%' || sqlc.arg(keyword) || '%'
+   OR url LIKE '%' || sqlc.arg(keyword) || '%'
 ORDER BY updated_at DESC;
 
 -- name: GetVault :one
-SELECT * FROM vault WHERE user_id = ? AND id = ?;
+SELECT * FROM vault WHERE id = ?;
 
 -- name: InsertVault :execlastid
-INSERT INTO vault(user_id, title, username, password_enc, url, note, totp_enc, created_at, updated_at)
-VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO vault(title, username, password_enc, url, note, totp_enc, created_at, updated_at)
+VALUES(?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: UpdateVault :execrows
 UPDATE vault SET title = ?, username = ?, password_enc = ?, url = ?, note = ?, totp_enc = ?, updated_at = ?
-WHERE id = ? AND user_id = ?;
+WHERE id = ?;
 
 -- name: DeleteVault :execrows
-DELETE FROM vault WHERE user_id = ? AND id = ?;
+DELETE FROM vault WHERE id = ?;
 
 -- name: ListBookmarks :many
-SELECT * FROM bookmarks WHERE user_id = ? ORDER BY sort, id;
+SELECT * FROM bookmarks ORDER BY sort, id;
 
 -- name: InsertBookmark :execlastid
-INSERT INTO bookmarks(user_id, title, url, icon, sort, created_at) VALUES(?, ?, ?, ?, ?, ?);
+INSERT INTO bookmarks(title, url, icon, sort, created_at) VALUES(?, ?, ?, ?, ?);
 
 -- name: UpdateBookmark :execrows
-UPDATE bookmarks SET title = ?, url = ?, icon = ?, sort = ? WHERE id = ? AND user_id = ?;
+UPDATE bookmarks SET title = ?, url = ?, icon = ?, sort = ? WHERE id = ?;
 
 -- name: DeleteBookmark :execrows
-DELETE FROM bookmarks WHERE user_id = ? AND id = ?;
+DELETE FROM bookmarks WHERE id = ?;
 
 -- name: ListServers :many
 SELECT * FROM servers ORDER BY id;
@@ -150,30 +113,30 @@ WHERE id = ?;
 DELETE FROM dbconns WHERE id = ?;
 
 -- name: InsertFile :execlastid
-INSERT INTO files(user_id, name, stored, size, mime, created_at) VALUES(?, ?, ?, ?, ?, ?);
+INSERT INTO files(name, stored, size, mime, created_at) VALUES(?, ?, ?, ?, ?);
 
 -- name: ListFiles :many
-SELECT * FROM files WHERE user_id = ? ORDER BY id DESC;
+SELECT * FROM files ORDER BY id DESC;
 
 -- name: GetFile :one
 SELECT * FROM files WHERE id = ?;
 
 -- name: DeleteFile :execrows
-DELETE FROM files WHERE id = ? AND user_id = ?;
+DELETE FROM files WHERE id = ?;
 
 -- name: InsertShare :execlastid
-INSERT INTO shares(code, file_id, user_id, file_name, expires_at, created_at) VALUES(?, ?, ?, ?, ?, ?);
+INSERT INTO shares(code, file_id, file_name, expires_at, created_at) VALUES(?, ?, ?, ?, ?);
 
 -- name: ListShares :many
-SELECT * FROM shares WHERE user_id = ? ORDER BY id DESC;
+SELECT * FROM shares ORDER BY id DESC;
 
 -- name: GetShareByCode :one
-SELECT sh.id, sh.code, sh.file_id, sh.user_id, sh.file_name, sh.expires_at, sh.downloads, sh.created_at,
+SELECT sh.id, sh.code, sh.file_id, sh.file_name, sh.expires_at, sh.downloads, sh.created_at,
        f.name, f.stored, f.size, f.mime
 FROM shares sh JOIN files f ON f.id = sh.file_id WHERE sh.code = ?;
 
 -- name: DeleteShare :execrows
-DELETE FROM shares WHERE id = ? AND user_id = ?;
+DELETE FROM shares WHERE id = ?;
 
 -- name: DeleteSharesByFile :exec
 DELETE FROM shares WHERE file_id = ?;
@@ -323,11 +286,11 @@ FROM license_cards;
 -- name: CountLicenseApps :one
 SELECT COUNT(*) FROM license_apps;
 
--- name: CountBookmarksByUser :one
-SELECT COUNT(*) FROM bookmarks WHERE user_id = ?;
+-- name: CountBookmarks :one
+SELECT COUNT(*) FROM bookmarks;
 
--- name: CountVaultByUser :one
-SELECT COUNT(*) FROM vault WHERE user_id = ?;
+-- name: CountVault :one
+SELECT COUNT(*) FROM vault;
 
 -- name: CountDbconns :one
 SELECT COUNT(*) FROM dbconns;

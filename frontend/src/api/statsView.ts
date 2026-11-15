@@ -3,7 +3,6 @@ import type recentMemoryView from "./recentMemoryView";
 import type recentOrderView from "./recentOrderView";
 import type trendPoint from "./trendPoint";
 export default interface statsView {
-  totalUsers:number
   activeSessions:number
   todayLogins:number
   uptimeSeconds:number

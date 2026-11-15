@@ -311,14 +311,9 @@ func routeAdmin(st *store.Store, ctx *fasthttp.RequestCtx) error {
 		ctx.SetStatusCode(fasthttp.StatusUnauthorized)
 		return errors.New("missing token")
 	}
-	su, err := st.GetSessionUser(token, sessionTTL, sessionRenewAfter)
-	if err != nil {
+	if err := st.CheckSession(token, sessionTTL, sessionRenewAfter); err != nil {
 		ctx.SetStatusCode(fasthttp.StatusUnauthorized)
 		return errors.New("invalid token")
-	}
-	if su.User.Role != "admin" || su.User.Status != "active" {
-		ctx.SetStatusCode(fasthttp.StatusForbidden)
-		return errors.New("admin only")
 	}
 	return nil
 }

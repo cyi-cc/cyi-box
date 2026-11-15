@@ -692,9 +692,9 @@ func placeUnderLock(ctx context.Context, up *payx.Client, goodsID int64, goodsKe
 
 // PayPoller 待支付订单轮询器（fun.Wired 单例，5s 一扫）。
 type PayPoller struct {
-	Store  *store.Store  `fun:"auto"`
-	Up     *payx.Client  `fun:"auto"`
-	Notify *PayNotifier  `fun:"auto"`
+	Store  *store.Store `fun:"auto"`
+	Up     *payx.Client `fun:"auto"`
+	Notify *PayNotifier `fun:"auto"`
 }
 
 func (p *PayPoller) New() {

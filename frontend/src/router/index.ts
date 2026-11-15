@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { saveRedirect } from '../lib/api'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -164,7 +165,8 @@ router.beforeEach(async to => {
   const auth = useAuthStore()
   if (!auth.ready) await auth.fetchMe()
   if (to.meta.requiresAuth && !auth.user) {
-    return { path: '/login', query: { redirect: to.fullPath } }
+    saveRedirect(to.fullPath)
+    return { path: '/login' }
   }
   if (to.meta.requiresAdmin && !auth.isAdmin) {
     return { path: '/' }

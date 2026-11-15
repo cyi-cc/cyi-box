@@ -13,7 +13,6 @@ import (
 func main() {
 	f := fun.GetFun()
 	f.BindServiceForGen(&service.AuthSvc{})
-	f.BindServiceForGen(&service.UserSvc{})
 	f.BindServiceForGen(&service.DashboardSvc{})
 	f.BindServiceForGen(&service.ToolSvc{})
 	f.BindServiceForGen(&service.VaultSvc{})

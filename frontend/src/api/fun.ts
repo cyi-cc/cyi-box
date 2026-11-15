@@ -11,7 +11,6 @@ import paySvc from "./paySvc";
 import serverSvc from "./serverSvc";
 import settingSvc from "./settingSvc";
 import toolSvc from "./toolSvc";
-import userSvc from "./userSvc";
 import vaultSvc from "./vaultSvc";
 import webSvc from "./webSvc";
 
@@ -31,7 +30,6 @@ export class defaultApi extends Client {
   public serverSvc: serverSvc = new serverSvc(this);
   public settingSvc: settingSvc = new settingSvc(this);
   public toolSvc: toolSvc = new toolSvc(this);
-  public userSvc: userSvc = new userSvc(this);
   public vaultSvc: vaultSvc = new vaultSvc(this);
   public webSvc: webSvc = new webSvc(this);
 }

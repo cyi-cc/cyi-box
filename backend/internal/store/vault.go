@@ -11,7 +11,6 @@ import (
 // VaultEntry 密码箱条目：password_enc / totp_enc 为 AES-GCM 密文，离开 store 前必须解密
 type VaultEntry struct {
 	Id          int64
-	UserID      int64
 	Title       string
 	Username    string
 	PasswordEnc string
@@ -24,17 +23,14 @@ type VaultEntry struct {
 
 func vaultFromRow(v db.Vault) VaultEntry {
 	return VaultEntry{
-		Id: v.ID, UserID: v.UserID, Title: v.Title, Username: v.Username,
+		Id: v.ID, Title: v.Title, Username: v.Username,
 		PasswordEnc: v.PasswordEnc, Url: v.Url, Note: v.Note, TotpEnc: v.TotpEnc,
 		CreatedAt: v.CreatedAt, UpdatedAt: v.UpdatedAt,
 	}
 }
 
-func (s *Store) ListVault(userID int64, keyword string) ([]VaultEntry, error) {
-	rows, err := s.q.ListVault(storeCtx, db.ListVaultParams{
-		UserID:  userID,
-		Keyword: optStr(keyword),
-	})
+func (s *Store) ListVault(keyword string) ([]VaultEntry, error) {
+	rows, err := s.q.ListVault(storeCtx, optStr(keyword))
 	if err != nil {
 		return nil, err
 	}
@@ -45,8 +41,8 @@ func (s *Store) ListVault(userID int64, keyword string) ([]VaultEntry, error) {
 	return items, nil
 }
 
-func (s *Store) GetVault(userID, id int64) (VaultEntry, error) {
-	v, err := s.q.GetVault(storeCtx, db.GetVaultParams{UserID: userID, ID: id})
+func (s *Store) GetVault(id int64) (VaultEntry, error) {
+	v, err := s.q.GetVault(storeCtx, id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return VaultEntry{}, ErrNotFound
 	}
@@ -59,7 +55,7 @@ func (s *Store) SaveVault(e *VaultEntry) error {
 		n, err := s.q.UpdateVault(storeCtx, db.UpdateVaultParams{
 			Title: e.Title, Username: e.Username, PasswordEnc: e.PasswordEnc,
 			Url: e.Url, Note: e.Note, TotpEnc: e.TotpEnc,
-			UpdatedAt: now, ID: e.Id, UserID: e.UserID,
+			UpdatedAt: now, ID: e.Id,
 		})
 		if err != nil {
 			return err
@@ -70,7 +66,7 @@ func (s *Store) SaveVault(e *VaultEntry) error {
 		return nil
 	}
 	id, err := s.q.InsertVault(storeCtx, db.InsertVaultParams{
-		UserID: e.UserID, Title: e.Title, Username: e.Username,
+		Title: e.Title, Username: e.Username,
 		PasswordEnc: e.PasswordEnc, Url: e.Url, Note: e.Note, TotpEnc: e.TotpEnc,
 		CreatedAt: now, UpdatedAt: now,
 	})
@@ -81,8 +77,8 @@ func (s *Store) SaveVault(e *VaultEntry) error {
 	return nil
 }
 
-func (s *Store) DeleteVault(userID, id int64) error {
-	n, err := s.q.DeleteVault(storeCtx, db.DeleteVaultParams{UserID: userID, ID: id})
+func (s *Store) DeleteVault(id int64) error {
+	n, err := s.q.DeleteVault(storeCtx, id)
 	if err != nil {
 		return err
 	}

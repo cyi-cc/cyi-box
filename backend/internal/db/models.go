@@ -6,7 +6,6 @@ package db
 
 type Bookmark struct {
 	ID        int64
-	UserID    int64
 	Title     string
 	Url       string
 	Icon      string
@@ -41,7 +40,6 @@ type Dbconn struct {
 
 type File struct {
 	ID        int64
-	UserID    int64
 	Name      string
 	Stored    string
 	Size      int64
@@ -123,7 +121,6 @@ type Server struct {
 
 type Session struct {
 	Token     string
-	UserID    int64
 	CreatedAt int64
 	ExpiresAt int64
 }
@@ -137,7 +134,6 @@ type Share struct {
 	ID        int64
 	Code      string
 	FileID    int64
-	UserID    int64
 	FileName  string
 	ExpiresAt int64
 	Downloads int64
@@ -154,19 +150,8 @@ type Tool struct {
 	Enabled     bool
 }
 
-type User struct {
-	ID           int64
-	Name         string
-	PasswordHash string
-	Role         string
-	Status       string
-	CreatedAt    int64
-	UpdatedAt    int64
-}
-
 type Vault struct {
 	ID          int64
-	UserID      int64
 	Title       string
 	Username    string
 	PasswordEnc string

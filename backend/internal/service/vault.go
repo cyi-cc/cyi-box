@@ -22,16 +22,16 @@ type VaultSvc struct {
 	Cfg   *config.Config `fun:"auto"`
 }
 
-func (s *VaultSvc) owner() (store.SessionUser, error) {
-	return sessionFrom(s.RequestCtx)
+func (s *VaultSvc) check() error {
+	_, err := sessionToken(s.RequestCtx)
+	return err
 }
 
 func (s *VaultSvc) List() ([]dto.VaultItemView, error) {
-	su, err := s.owner()
-	if err != nil {
+	if err := s.check(); err != nil {
 		return nil, err
 	}
-	items, err := s.Store.ListVault(su.User.Id, "")
+	items, err := s.Store.ListVault("")
 	if err != nil {
 		return nil, fmt.Errorf("vault: list failed: %w", err)
 	}
@@ -43,8 +43,7 @@ func (s *VaultSvc) List() ([]dto.VaultItemView, error) {
 }
 
 func (s *VaultSvc) Save(d dto.SaveVaultDto) (dto.VaultItemView, error) {
-	su, err := s.owner()
-	if err != nil {
+	if err := s.check(); err != nil {
 		return dto.VaultItemView{}, err
 	}
 	title := strings.TrimSpace(d.Title)
@@ -52,9 +51,9 @@ func (s *VaultSvc) Save(d dto.SaveVaultDto) (dto.VaultItemView, error) {
 		return dto.VaultItemView{}, fun.Error(4001, "标题必填且不超过 64 字符")
 	}
 
-	e := store.VaultEntry{UserID: su.User.Id, Title: title}
+	e := store.VaultEntry{Title: title}
 	if d.Id != nil {
-		old, err := s.Store.GetVault(su.User.Id, *d.Id)
+		old, err := s.Store.GetVault(*d.Id)
 		if errors.Is(err, store.ErrNotFound) {
 			return dto.VaultItemView{}, fun.Error(4001, "条目不存在")
 		}
@@ -105,11 +104,10 @@ func (s *VaultSvc) Save(d dto.SaveVaultDto) (dto.VaultItemView, error) {
 
 // Reveal 显式取回明文密码（前端点「查看」才调用，列表永不携带）
 func (s *VaultSvc) Reveal(d dto.VaultIdDto) (dto.SecretView, error) {
-	su, err := s.owner()
-	if err != nil {
+	if err := s.check(); err != nil {
 		return dto.SecretView{}, err
 	}
-	e, err := s.Store.GetVault(su.User.Id, d.Id)
+	e, err := s.Store.GetVault(d.Id)
 	if errors.Is(err, store.ErrNotFound) {
 		return dto.SecretView{}, fun.Error(4001, "条目不存在")
 	}
@@ -128,11 +126,10 @@ func (s *VaultSvc) Reveal(d dto.VaultIdDto) (dto.SecretView, error) {
 
 // Totp 返回当前 6 位验证码与剩余秒数；密钥不出服务端
 func (s *VaultSvc) Totp(d dto.VaultIdDto) (dto.TotpView, error) {
-	su, err := s.owner()
-	if err != nil {
+	if err := s.check(); err != nil {
 		return dto.TotpView{}, err
 	}
-	e, err := s.Store.GetVault(su.User.Id, d.Id)
+	e, err := s.Store.GetVault(d.Id)
 	if errors.Is(err, store.ErrNotFound) {
 		return dto.TotpView{}, fun.Error(4001, "条目不存在")
 	}
@@ -154,11 +151,10 @@ func (s *VaultSvc) Totp(d dto.VaultIdDto) (dto.TotpView, error) {
 }
 
 func (s *VaultSvc) Delete(d dto.VaultIdDto) (dto.OkView, error) {
-	su, err := s.owner()
-	if err != nil {
+	if err := s.check(); err != nil {
 		return dto.OkView{}, err
 	}
-	if err := s.Store.DeleteVault(su.User.Id, d.Id); err != nil {
+	if err := s.Store.DeleteVault(d.Id); err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			return dto.OkView{}, fun.Error(4001, "条目不存在")
 		}

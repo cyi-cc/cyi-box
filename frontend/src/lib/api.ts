@@ -10,6 +10,15 @@ export const clearToken = () => localStorage.removeItem(TOKEN_KEY)
 // 后端统一走 /api（vite 代理剥前缀）；生产部署时前端同源反代即可
 export const client = api.create('/api')
 
+// 隐式登录回跳：被拦的目标页存 sessionStorage 而非 ?redirect= 参数，URL 保持干净
+const REDIRECT_KEY = 'cyibox_login_redirect'
+export const saveRedirect = (p: string) => sessionStorage.setItem(REDIRECT_KEY, p)
+export const takeRedirect = () => {
+  const p = sessionStorage.getItem(REDIRECT_KEY)
+  sessionStorage.removeItem(REDIRECT_KEY)
+  return p
+}
+
 // 组件外使用的离散 message/dialog（拦截器、store 里提示用）
 export const { message, dialog } = createDiscreteApi(['message', 'dialog'])
 
@@ -31,7 +40,8 @@ client.addResponseInterceptor(async (_svc, _method, result) => {
       redirecting = true
       message.warning(result?.msg || '登录已失效，请重新登录')
       const { default: router } = await import('../router')
-      await router.replace({ path: '/login', query: { redirect: router.currentRoute.value.fullPath } })
+      saveRedirect(router.currentRoute.value.fullPath)
+      await router.replace('/login')
       redirecting = false
     }
   }

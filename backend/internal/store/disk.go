@@ -12,7 +12,6 @@ import (
 
 type File struct {
 	Id        int64
-	UserID    int64
 	Name      string // 原始文件名
 	Stored    string // 落盘文件名（随机）
 	Size      int64
@@ -24,7 +23,6 @@ type Share struct {
 	Id        int64
 	Code      string
 	FileID    int64
-	UserID    int64
 	FileName  string
 	ExpiresAt int64 // 0 = 永久
 	Downloads int64
@@ -33,14 +31,14 @@ type Share struct {
 
 func fileFromRow(f db.File) File {
 	return File{
-		Id: f.ID, UserID: f.UserID, Name: f.Name, Stored: f.Stored,
+		Id: f.ID, Name: f.Name, Stored: f.Stored,
 		Size: f.Size, Mime: f.Mime, CreatedAt: f.CreatedAt,
 	}
 }
 
 func shareFromRow(s db.Share) Share {
 	return Share{
-		Id: s.ID, Code: s.Code, FileID: s.FileID, UserID: s.UserID,
+		Id: s.ID, Code: s.Code, FileID: s.FileID,
 		FileName: s.FileName, ExpiresAt: s.ExpiresAt,
 		Downloads: s.Downloads, CreatedAt: s.CreatedAt,
 	}
@@ -48,7 +46,7 @@ func shareFromRow(s db.Share) Share {
 
 func (s *Store) InsertFile(f *File) error {
 	id, err := s.q.InsertFile(storeCtx, db.InsertFileParams{
-		UserID: f.UserID, Name: f.Name, Stored: f.Stored,
+		Name: f.Name, Stored: f.Stored,
 		Size: f.Size, Mime: f.Mime, CreatedAt: time.Now().Unix(),
 	})
 	if err != nil {
@@ -58,8 +56,8 @@ func (s *Store) InsertFile(f *File) error {
 	return nil
 }
 
-func (s *Store) ListFiles(userID int64) ([]File, error) {
-	rows, err := s.q.ListFiles(storeCtx, userID)
+func (s *Store) ListFiles() ([]File, error) {
+	rows, err := s.q.ListFiles(storeCtx)
 	if err != nil {
 		return nil, err
 	}
@@ -78,15 +76,14 @@ func (s *Store) GetFile(id int64) (File, error) {
 	return fileFromRow(f), err
 }
 
-// DeleteFile 仅限属主；返回被删行数（0 = 不存在或非属主）
-func (s *Store) DeleteFile(id, userID int64) (int64, error) {
-	return s.q.DeleteFile(storeCtx, db.DeleteFileParams{ID: id, UserID: userID})
+func (s *Store) DeleteFile(id int64) (int64, error) {
+	return s.q.DeleteFile(storeCtx, id)
 }
 
 func (s *Store) InsertShare(sh *Share) error {
 	sh.CreatedAt = time.Now().Unix()
 	id, err := s.q.InsertShare(storeCtx, db.InsertShareParams{
-		Code: sh.Code, FileID: sh.FileID, UserID: sh.UserID,
+		Code: sh.Code, FileID: sh.FileID,
 		FileName: sh.FileName, ExpiresAt: sh.ExpiresAt,
 		CreatedAt: sh.CreatedAt,
 	})
@@ -97,8 +94,8 @@ func (s *Store) InsertShare(sh *Share) error {
 	return nil
 }
 
-func (s *Store) ListShares(userID int64) ([]Share, error) {
-	rows, err := s.q.ListShares(storeCtx, userID)
+func (s *Store) ListShares() ([]Share, error) {
+	rows, err := s.q.ListShares(storeCtx)
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +124,7 @@ func (s *Store) GetShareFile(code string) (ShareFileView, error) {
 	}
 	return ShareFileView{
 		Share: Share{
-			Id: r.ID, Code: r.Code, FileID: r.FileID, UserID: r.UserID,
+			Id: r.ID, Code: r.Code, FileID: r.FileID,
 			FileName: r.FileName, ExpiresAt: r.ExpiresAt,
 			Downloads: r.Downloads, CreatedAt: r.CreatedAt,
 		},
@@ -135,8 +132,8 @@ func (s *Store) GetShareFile(code string) (ShareFileView, error) {
 	}, nil
 }
 
-func (s *Store) DeleteShare(id, userID int64) (int64, error) {
-	return s.q.DeleteShare(storeCtx, db.DeleteShareParams{ID: id, UserID: userID})
+func (s *Store) DeleteShare(id int64) (int64, error) {
+	return s.q.DeleteShare(storeCtx, id)
 }
 
 func (s *Store) DeleteSharesByFile(fileID int64) error {

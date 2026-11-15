@@ -50,6 +50,9 @@ func (s *Store) migrate() error {
 	if _, err := s.DB.Exec(db.SchemaDDL); err != nil {
 		return fmt.Errorf("store: migrate failed: %w", err)
 	}
+	if err := s.migrateSingleUser(); err != nil {
+		return err
+	}
 	// 代理池功能已移除：清掉老库遗留的表
 	if _, err := s.DB.Exec(`DROP TABLE IF EXISTS proxies;
 DROP TABLE IF EXISTS proxy_regions;
@@ -78,32 +81,89 @@ DROP TABLE IF EXISTS proxy_keys;`); err != nil {
 	return nil
 }
 
+// migrateSingleUser 老库升级：users 表存在则把首个管理员密码哈希并入 settings，
+// 重建 sessions/vault/bookmarks/files/shares 去掉 user_id 列，最后 DROP users。
+// FK 临时关闭避免重建期父表删除冲突（单连接，PRAGMA 对后续语句生效）。
+func (s *Store) migrateSingleUser() error {
+	var n int64
+	if err := s.DB.QueryRow(`SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='users'`).Scan(&n); err != nil {
+		return err
+	}
+	if n == 0 {
+		return nil
+	}
+	var hash string
+	_ = s.DB.QueryRow(`SELECT password_hash FROM users
+		ORDER BY CASE WHEN role='admin' AND status='active' THEN 0 ELSE 1 END, id LIMIT 1`).Scan(&hash)
+	if hash != "" {
+		if _, err := s.DB.Exec(`INSERT INTO settings(k,v) VALUES('admin_password_hash',?) ON CONFLICT(k) DO NOTHING`, hash); err != nil {
+			return fmt.Errorf("store: migrate admin password failed: %w", err)
+		}
+	}
+	stmts := []string{
+		"PRAGMA foreign_keys=OFF",
+		`CREATE TABLE sessions_new(token TEXT PRIMARY KEY, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL)`,
+		`INSERT INTO sessions_new SELECT token, created_at, expires_at FROM sessions`,
+		`DROP TABLE sessions`,
+		`ALTER TABLE sessions_new RENAME TO sessions`,
+		`CREATE INDEX IF NOT EXISTS idx_sessions_expiry ON sessions(expires_at)`,
+		`CREATE TABLE vault_new(id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, username TEXT NOT NULL DEFAULT '', password_enc TEXT NOT NULL DEFAULT '', url TEXT NOT NULL DEFAULT '', note TEXT NOT NULL DEFAULT '', totp_enc TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`,
+		`INSERT INTO vault_new SELECT id, title, username, password_enc, url, note, totp_enc, created_at, updated_at FROM vault`,
+		`DROP TABLE vault`,
+		`ALTER TABLE vault_new RENAME TO vault`,
+		`CREATE TABLE bookmarks_new(id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, url TEXT NOT NULL, icon TEXT NOT NULL DEFAULT '', sort INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL)`,
+		`INSERT INTO bookmarks_new SELECT id, title, url, icon, sort, created_at FROM bookmarks`,
+		`DROP TABLE bookmarks`,
+		`ALTER TABLE bookmarks_new RENAME TO bookmarks`,
+		`CREATE TABLE files_new(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, stored TEXT NOT NULL, size INTEGER NOT NULL DEFAULT 0, mime TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL)`,
+		`INSERT INTO files_new SELECT id, name, stored, size, mime, created_at FROM files`,
+		`DROP TABLE files`,
+		`ALTER TABLE files_new RENAME TO files`,
+		`CREATE TABLE shares_new(id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL UNIQUE, file_id INTEGER NOT NULL REFERENCES files(id) ON DELETE CASCADE, file_name TEXT NOT NULL DEFAULT '', expires_at INTEGER NOT NULL DEFAULT 0, downloads INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL)`,
+		`INSERT INTO shares_new SELECT id, code, file_id, file_name, expires_at, downloads, created_at FROM shares`,
+		`DROP TABLE shares`,
+		`ALTER TABLE shares_new RENAME TO shares`,
+		`CREATE INDEX IF NOT EXISTS idx_shares_file ON shares(file_id)`,
+		`DROP TABLE users`,
+		"PRAGMA foreign_keys=ON",
+	}
+	for _, q := range stmts {
+		if _, err := s.DB.Exec(q); err != nil {
+			return fmt.Errorf("store: single-user migration failed [%.40s]: %w", q, err)
+		}
+	}
+	log.Print("store: migrated to single-user schema (users table dropped)")
+	return nil
+}
+
 var storeCtx = context.Background()
 
 func optStr(s string) sql.NullString {
 	return sql.NullString{String: s, Valid: true}
 }
 
-// SeedAdmin 空库时写入首个管理员；已有用户则跳过
-func (s *Store) SeedAdmin(passwordHash string) error {
-	n, err := s.q.CountAllUsers(storeCtx)
+// SeedPassword 无密码时把初始密码哈希写入 settings（单用户模型）
+func (s *Store) SeedPassword(passwordHash string) error {
+	v, err := s.GetSetting(PasswordHashKey)
 	if err != nil {
-		return fmt.Errorf("store: count users failed: %w", err)
+		return err
 	}
-	if n > 0 {
+	if v != "" {
 		return nil
 	}
-	now := time.Now().Unix()
-	_, err = s.q.InsertUser(storeCtx, db.InsertUserParams{
-		Name: s.Cfg.AdminName, PasswordHash: passwordHash, Role: "admin",
-		CreatedAt: now, UpdatedAt: now,
-	})
-	if err != nil {
-		return fmt.Errorf("store: seed admin failed: %w", err)
+	if err := s.SetSetting(PasswordHashKey, passwordHash); err != nil {
+		return fmt.Errorf("store: seed password failed: %w", err)
 	}
-	log.Printf("store: seeded admin account %q", s.Cfg.AdminName)
+	log.Print("store: seeded admin password")
 	return nil
 }
+
+// PasswordHashKey settings 表里的登录密码 bcrypt 哈希键
+const PasswordHashKey = "admin_password_hash"
+
+func (s *Store) PasswordHash() (string, error) { return s.GetSetting(PasswordHashKey) }
+
+func (s *Store) SetPasswordHash(hash string) error { return s.SetSetting(PasswordHashKey, hash) }
 
 // SeedTools 空表时写入两条示例工具，演示工具箱菜单的数据驱动渲染
 func (s *Store) SeedTools() error {
@@ -125,150 +185,41 @@ func (s *Store) SeedTools() error {
 	return nil
 }
 
-// ---- users ----
-
-type User struct {
-	Id           int64
-	Name         string
-	PasswordHash string
-	Role         string
-	Status       string
-	CreatedAt    int64
-	UpdatedAt    int64
-}
-
 var ErrNotFound = errors.New("record not found")
-
-func userFromRow(u db.User) User {
-	return User{
-		Id: u.ID, Name: u.Name, PasswordHash: u.PasswordHash, Role: u.Role,
-		Status: u.Status, CreatedAt: u.CreatedAt, UpdatedAt: u.UpdatedAt,
-	}
-}
-
-func (s *Store) GetUserByName(name string) (User, error) {
-	u, err := s.q.GetUserByName(storeCtx, name)
-	if errors.Is(err, sql.ErrNoRows) {
-		return User{}, ErrNotFound
-	}
-	return userFromRow(u), err
-}
-
-func (s *Store) GetUserByID(id int64) (User, error) {
-	u, err := s.q.GetUserByID(storeCtx, id)
-	if errors.Is(err, sql.ErrNoRows) {
-		return User{}, ErrNotFound
-	}
-	return userFromRow(u), err
-}
-
-func (s *Store) ListUsers(keyword string, page, pageSize int64) ([]User, int64, error) {
-	total, err := s.q.CountUsers(storeCtx, optStr(keyword))
-	if err != nil {
-		return nil, 0, err
-	}
-	rows, err := s.q.ListUsers(storeCtx, db.ListUsersParams{
-		Keyword: optStr(keyword),
-		Limit:   pageSize,
-		Offset:  (page - 1) * pageSize,
-	})
-	if err != nil {
-		return nil, 0, err
-	}
-	users := make([]User, 0, len(rows))
-	for _, r := range rows {
-		users = append(users, userFromRow(r))
-	}
-	return users, total, nil
-}
-
-func (s *Store) CreateUser(name, passwordHash, role string) (User, error) {
-	now := time.Now().Unix()
-	id, err := s.q.InsertUser(storeCtx, db.InsertUserParams{
-		Name: name, PasswordHash: passwordHash, Role: role, CreatedAt: now, UpdatedAt: now,
-	})
-	if err != nil {
-		return User{}, err
-	}
-	return s.GetUserByID(id)
-}
-
-func (s *Store) UpdateUser(id int64, name, role, status string, passwordHash *string) error {
-	now := time.Now().Unix()
-	if passwordHash != nil {
-		return s.q.UpdateUserPassword(storeCtx, db.UpdateUserPasswordParams{
-			Name: name, Role: role, Status: status, PasswordHash: *passwordHash,
-			UpdatedAt: now, ID: id,
-		})
-	}
-	return s.q.UpdateUser(storeCtx, db.UpdateUserParams{
-		Name: name, Role: role, Status: status, UpdatedAt: now, ID: id,
-	})
-}
-
-func (s *Store) DeleteUser(id int64) error {
-	return s.q.DeleteUser(storeCtx, id)
-}
-
-func (s *Store) CountUsers() (int64, error) {
-	return s.q.CountAllUsers(storeCtx)
-}
-
-func (s *Store) CountActiveUsers() (int64, error) {
-	return s.q.CountActiveUsers(storeCtx)
-}
-
-func (s *Store) CountAdmins() (int64, error) {
-	return s.q.CountAdmins(storeCtx)
-}
 
 // ---- sessions ----
 
-func (s *Store) CreateSession(token string, userID int64, ttl time.Duration) error {
+func (s *Store) CreateSession(token string, ttl time.Duration) error {
 	now := time.Now()
 	return s.q.InsertSession(storeCtx, db.InsertSessionParams{
-		Token: token, UserID: userID,
+		Token:     token,
 		CreatedAt: now.Unix(), ExpiresAt: now.Add(ttl).Unix(),
 	})
 }
 
-// SessionUser 会话命中后的用户视图：登录态校验只走这一处，过期/禁用统一判负
-type SessionUser struct {
-	User  User
-	Token string
-}
-
-// GetSessionUser 校验 token 对应的会话与用户。
+// CheckSession 校验会话 token。
 // 滑动续期：会话本身 ttl 过期即失效；存活但距签发/上次续期超过 renewAfter 时，
 // 顺手把 expires_at 顺延回 now+ttl——活跃用户不掉线，闲置 ttl 时长强制下线。
-func (s *Store) GetSessionUser(token string, ttl, renewAfter time.Duration) (SessionUser, error) {
-	row, err := s.q.GetSessionUser(storeCtx, token)
+func (s *Store) CheckSession(token string, ttl, renewAfter time.Duration) error {
+	exp, err := s.q.GetSessionExpiry(storeCtx, token)
 	if errors.Is(err, sql.ErrNoRows) {
-		return SessionUser{}, ErrNotFound
+		return ErrNotFound
 	}
 	if err != nil {
-		return SessionUser{}, err
-	}
-	su := SessionUser{
-		Token: token,
-		User: User{
-			Id: row.ID, Name: row.Name, PasswordHash: row.PasswordHash,
-			Role: row.Role, Status: row.Status,
-			CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
-		},
+		return err
 	}
 	now := time.Now()
-	if now.Unix() > row.ExpiresAt {
+	if now.Unix() > exp {
 		_ = s.q.DeleteSession(storeCtx, token)
-		return SessionUser{}, ErrNotFound
+		return ErrNotFound
 	}
-	lastRefresh := time.Unix(row.ExpiresAt, 0).Add(-ttl)
+	lastRefresh := time.Unix(exp, 0).Add(-ttl)
 	if now.Sub(lastRefresh) >= renewAfter {
 		_ = s.q.TouchSession(storeCtx, db.TouchSessionParams{
 			ExpiresAt: now.Add(ttl).Unix(), Token: token,
 		})
 	}
-	return su, nil
+	return nil
 }
 
 func (s *Store) DeleteSession(token string) error {
@@ -276,10 +227,8 @@ func (s *Store) DeleteSession(token string) error {
 }
 
 // DeleteOtherSessions 改密后吊销除当前外的全部会话
-func (s *Store) DeleteOtherSessions(userID int64, keepToken string) error {
-	return s.q.DeleteOtherSessions(storeCtx, db.DeleteOtherSessionsParams{
-		UserID: userID, Token: keepToken,
-	})
+func (s *Store) DeleteOtherSessions(keepToken string) error {
+	return s.q.DeleteOtherSessions(storeCtx, keepToken)
 }
 
 func (s *Store) CountActiveSessions() (int64, error) {

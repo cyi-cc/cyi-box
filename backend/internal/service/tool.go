@@ -39,9 +39,9 @@ func (s *ToolSvc) SaveTool(d dto.SaveToolDto) (dto.ToolView, error) {
 		return dto.ToolView{}, fun.Error(4001, "工具名必填且不超过 32 字符")
 	}
 	t := store.Tool{
-		Name: name,
-		Url:  url,
-		Sort: 0,
+		Name:    name,
+		Url:     url,
+		Sort:    0,
 		Enabled: true,
 	}
 	if d.Id != nil {
