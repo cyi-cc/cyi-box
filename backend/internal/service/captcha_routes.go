@@ -67,7 +67,9 @@ func CaptchaWidgetHandler(st *store.Store) fun.RouteHandler {
 		}
 		domains := splitCSV(key.Domains)
 		refHost := refererHost(ctx)
-		if len(domains) > 0 && (refHost == "" || !domainAllowed(refHost, domains)) {
+		// refHost==自身域：widget 自刷新（换题/答错重载）时 Referer 变为自身 URL，放行
+		selfRef := refHost != "" && refHost == strings.ToLower(string(ctx.Host()))
+		if len(domains) > 0 && !selfRef && !domainAllowed(refHost, domains) {
 			st.LogCaptcha(store.CaptchaLog{KeyID: key.Id, Sitekey: sitekey, Event: "widget", Ip: ip, Msg: "domain not allowed: " + refHost})
 			return widgetErr(ctx, 403, "domain not allowed")
 		}
