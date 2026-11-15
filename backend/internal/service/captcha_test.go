@@ -124,9 +124,6 @@ func TestTokenKeyBinding(t *testing.T) {
 	if consumeToken(tok, 4) {
 		t.Fatal("token bound to another key must fail")
 	}
-	if !consumeTokenAny(tok) {
-		t.Fatal("keyID=0 should accept any token")
-	}
 }
 
 func TestDomainAllowed(t *testing.T) {

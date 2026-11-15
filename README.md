@@ -21,7 +21,7 @@
 - **仪表盘**：营收/订单/会话 KPI、模块宫格快捷入口、近 14 天营收趋势（金额+单数双轴）、最近成交与记忆动态
 - **支付网关**：Epay 兼容协议（`submit.php` / `mapi.php` / `api.php`）、商户 PID/Key、商品+CDK 库存（锁定分配、裸 hex 卡密）、二维码收银台、订单状态实时推送（`fun.Stream`）、异步通知重试
 - **授权系统**：项目管理（每个项目独立 `appid`）+ 卡密批量生成；`GET /v1/license` 公开校验——首次激活绑域名、异域名拒绝、0 小时=永久、项目停用全卡失效
-- **滑块验证码**：Turnstile 式 iframe 嵌入（`GET /captcha/widget?sitekey=`），Memphis 几何拼图程序生成、答案不出服务端；`pk_/sk_` 密钥对 + 域名白名单（Referer 校验 + `frame-ancestors` 双保险）；widget 内 `POST /v1/captcha/verify` 判容差 ±4px 出一次性 token（2 分钟），对方后端 `GET|POST /v1/captcha/check` 用 sk 核销即销毁；后台密钥管理页增删改查，本站登录页自带内置 sitekey
+- **滑块验证码**：Turnstile 式 iframe 嵌入（`GET /captcha/widget?sitekey=`），Memphis 几何拼图程序生成、答案不出服务端；`pk_/sk_` 密钥对 + 域名白名单（Referer 校验 + `frame-ancestors` 双保险）；widget 内 `POST /v1/captcha/verify` 判容差 ±4px 出一次性 token（2 分钟），对方后端 `GET|POST /v1/captcha/check` 用 sk 核销即销毁；每 IP 10 题位滚动 30min 限流 + 打错 5 次封禁；后台密钥管理页增删改查
 - **记忆库 / MCP Server**：`POST /mcp` Streamable HTTP MCP 端点（Bearer 鉴权），`memory_save/get/search/list/delete/projects` 六个工具 + `memory://<key>` resources + `save_context` prompt；FTS5 trigram 全文搜索（中文子串可命中）；`GET /m/<key>?sig=` HMAC 签名阅读链接；Devin/Codex/Claude 共用一座库
 - **服务器管理**：SSH 密码/密钥登录（AES-GCM 加密存储）、CPU/内存/磁盘/网速实时监控、WebSocket 终端（xterm.js）、SFTP 文件管理
 - **数据库管理器**：MySQL / PostgreSQL / SQLite 连接（密码加密存储）、库表列结构 → CodeMirror SQL 补全、Ctrl+Enter 执行、JSON/CSV/XLSX 导入导出

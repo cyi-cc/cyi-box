@@ -1,8 +1,6 @@
 package store
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"database/sql"
 	"errors"
 	"time"
@@ -98,27 +96,3 @@ func (s *Store) DeleteCaptchaKey(id int64) error {
 func (s *Store) TouchCaptchaKey(id int64) {
 	_ = s.q.TouchCaptchaKey(storeCtx, id)
 }
-
-// SeedCaptchaKey 种子内置密钥：本站登录页的滑块用固定 sitekey，缺失才补
-func (s *Store) SeedCaptchaKey() error {
-	keys, err := s.ListCaptchaKeys()
-	if err != nil {
-		return err
-	}
-	for _, k := range keys {
-		if k.Sitekey == InternalCaptchaSitekey {
-			return nil
-		}
-	}
-	b := make([]byte, 16)
-	if _, err := rand.Read(b); err != nil {
-		return err
-	}
-	return s.InsertCaptchaKey(&CaptchaKey{
-		Sitekey: InternalCaptchaSitekey, Skey: "sk_" + hex.EncodeToString(b),
-		Name: "内置（本站登录）", Enabled: true,
-	})
-}
-
-// InternalCaptchaSitekey 本站登录页滑块的固定 sitekey
-const InternalCaptchaSitekey = "pk_internal"

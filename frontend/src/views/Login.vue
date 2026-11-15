@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, reactive, ref } from 'vue'
+import { reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NInput, NButton, NIcon } from 'naive-ui'
 import {
@@ -18,37 +18,15 @@ const form = reactive({ name: '', password: '' })
 const loading = ref(false)
 const errorMsg = ref('')
 
-// 滑块验证码：iframe 内页 postMessage 回传一次性 token
-const capToken = ref('')
-const capSrc = ref('/captcha/widget?sitekey=pk_internal')
-
-function onCapMsg(e: MessageEvent) {
-  if (e.origin !== location.origin) return
-  const d = e.data as { type?: string; token?: string } | null
-  if (d?.type === 'cyi-captcha' && d.token) capToken.value = d.token
-}
-onMounted(() => addEventListener('message', onCapMsg))
-onUnmounted(() => removeEventListener('message', onCapMsg))
-
-function resetCaptcha() {
-  capToken.value = ''
-  capSrc.value = `/captcha/widget?sitekey=pk_internal&r=${Date.now()}`
-}
-
 async function submit() {
   if (!form.name || !form.password) {
     errorMsg.value = '请输入用户名和密码'
     return
   }
-  if (!capToken.value) {
-    errorMsg.value = '请先完成滑块验证'
-    return
-  }
   loading.value = true
   errorMsg.value = ''
   try {
-    const err = await auth.login(form.name, form.password, capToken.value)
-    resetCaptcha()
+    const err = await auth.login(form.name, form.password)
     if (err) {
       errorMsg.value = err
       return
@@ -114,8 +92,6 @@ async function submit() {
           >
             <template #prefix><n-icon><LockClosedOutline /></n-icon></template>
           </n-input>
-
-          <iframe :src="capSrc" class="cap-frame" scrolling="no" title="滑块验证" />
 
           <div class="login-err">{{ errorMsg }}</div>
 

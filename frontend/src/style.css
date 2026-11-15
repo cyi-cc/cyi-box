@@ -312,11 +312,6 @@ body {
 }
 .login-form .sub { color: var(--cb-ink-2); font-size: 13px; margin: 0 0 32px; font-weight: 500; }
 .login-form .n-input { margin-bottom: 18px; }
-.cap-frame {
-  display: block; width: 304px; height: 222px;
-  border: 0; border-radius: 14px; overflow: hidden;
-  margin: -6px auto 4px;
-}
 .login-err {
   min-height: 26px;
   font-size: 13px;

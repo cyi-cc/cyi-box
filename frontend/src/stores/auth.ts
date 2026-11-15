@@ -24,8 +24,8 @@ export const useAuthStore = defineStore('auth', () => {
     ready.value = true
   }
 
-  async function login(name: string, password: string, captchaToken: string): Promise<string | null> {
-    const r = await client.authSvc.login({ name, password, captchaToken })
+  async function login(name: string, password: string): Promise<string | null> {
+    const r = await client.authSvc.login({ name, password })
     if (r.status !== 0 || !r.data?.token || !r.data.user) {
       return r.msg || '登录失败'
     }

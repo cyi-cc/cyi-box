@@ -38,9 +38,6 @@ func main() {
 	if err := st.SeedTools(); err != nil {
 		log.Fatalf("boot: seed tools failed: %v", err)
 	}
-	if err := st.SeedCaptchaKey(); err != nil {
-		log.Fatalf("boot: seed captcha key failed: %v", err)
-	}
 
 	f := fun.GetFun()
 	if len(cfg.CorsOrigins) > 0 {

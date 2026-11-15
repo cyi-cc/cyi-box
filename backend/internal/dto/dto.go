@@ -9,9 +9,8 @@ type OkView struct {
 // ---- auth ----
 
 type LoginDto struct {
-	Name         string
-	Password     string
-	CaptchaToken string
+	Name     string
+	Password string
 }
 
 type UserView struct {
@@ -154,13 +153,13 @@ type VaultItemView struct {
 // SaveVaultDto Password/TotpSecret 更新时传空指针表示不变；
 // TotpSecret 支持裸 base32 或 otpauth://totp/... 链接；传空字符串表示清除
 type SaveVaultDto struct {
-	Id          *int64
-	Title       string
-	Username    *string
-	Password    *string
-	Url         *string
-	Note        *string
-	TotpSecret  *string
+	Id         *int64
+	Title      string
+	Username   *string
+	Password   *string
+	Url        *string
+	Note       *string
+	TotpSecret *string
 }
 
 type VaultIdDto struct {
@@ -485,11 +484,11 @@ type PayOrderPageView struct {
 }
 
 type PayStatsView struct {
-	TodayCount    int64
-	TodayMoney    int64
-	TotalCount    int64
-	TotalMoney    int64
-	PendingCount  int64
+	TodayCount     int64
+	TodayMoney     int64
+	TotalCount     int64
+	TotalMoney     int64
+	PendingCount   int64
 	TodayPaidCount int64
 	TotalPaidCount int64
 }
@@ -523,12 +522,12 @@ type PayTestPayDto struct {
 }
 
 type PayTestPayView struct {
-	TradeNo   string
-	Payurl    string
-	Qrcode    string
-	Money     int64
-	Channel   string
-	Cashier   string
+	TradeNo string
+	Payurl  string
+	Qrcode  string
+	Money   int64
+	Channel string
+	Cashier string
 }
 
 type PayCashierDto struct {

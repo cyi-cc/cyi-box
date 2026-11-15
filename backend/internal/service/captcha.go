@@ -203,11 +203,6 @@ func consumeToken(token string, keyID int64) bool {
 	return true
 }
 
-// consumeTokenAny 本站登录用：不限定密钥，任何有效 token 均可
-func consumeTokenAny(token string) bool {
-	return consumeToken(token, 0)
-}
-
 // ---- 接入方密钥管理（仅管理员） ----
 
 type CaptchaSvc struct {
