@@ -98,6 +98,19 @@ CREATE TABLE IF NOT EXISTS captcha_keys (
   created_at   INTEGER NOT NULL
 );
 
+-- 接入方调用流水：widget 出题 / verify 判定 / check 核销，留最近若干条供排障
+CREATE TABLE IF NOT EXISTS captcha_logs (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  key_id     INTEGER NOT NULL DEFAULT 0,
+  sitekey    TEXT NOT NULL DEFAULT '',
+  event      TEXT NOT NULL DEFAULT '',
+  ok         INTEGER NOT NULL DEFAULT 0,
+  ip         TEXT NOT NULL DEFAULT '',
+  msg        TEXT NOT NULL DEFAULT '',
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_captcha_logs_time ON captcha_logs(created_at);
+
 CREATE TABLE IF NOT EXISTS pay_orders (
   id                INTEGER PRIMARY KEY AUTOINCREMENT,
   trade_no          TEXT NOT NULL UNIQUE,

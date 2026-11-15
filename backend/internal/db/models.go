@@ -24,6 +24,17 @@ type CaptchaKey struct {
 	CreatedAt int64
 }
 
+type CaptchaLog struct {
+	ID        int64
+	KeyID     int64
+	Sitekey   string
+	Event     string
+	Ok        int64
+	Ip        string
+	Msg       string
+	CreatedAt int64
+}
+
 type Dbconn struct {
 	ID          int64
 	Name        string

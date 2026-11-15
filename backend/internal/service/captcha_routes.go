@@ -59,17 +59,20 @@ func CaptchaWidgetHandler(st *store.Store) fun.RouteHandler {
 	return func(c *fun.RouteCtx) error {
 		ctx := c.RequestCtx
 		sitekey := strings.TrimSpace(string(ctx.QueryArgs().Peek("sitekey")))
+		ip := ctx.RemoteIP().String()
 		key, err := st.CaptchaKeyBySitekey(sitekey)
 		if err != nil {
+			st.LogCaptcha(store.CaptchaLog{Sitekey: sitekey, Event: "widget", Ip: ip, Msg: "invalid sitekey"})
 			return widgetErr(ctx, 403, "invalid sitekey")
 		}
 		domains := splitCSV(key.Domains)
 		refHost := refererHost(ctx)
 		if len(domains) > 0 && (refHost == "" || !domainAllowed(refHost, domains)) {
+			st.LogCaptcha(store.CaptchaLog{KeyID: key.Id, Sitekey: sitekey, Event: "widget", Ip: ip, Msg: "domain not allowed: " + refHost})
 			return widgetErr(ctx, 403, "domain not allowed")
 		}
-		ip := ctx.RemoteIP().String()
 		if capBanned(ip) || !capSlotFree(ip) {
+			st.LogCaptcha(store.CaptchaLog{KeyID: key.Id, Sitekey: sitekey, Event: "widget", Ip: ip, Msg: "rate limited"})
 			return widgetErr(ctx, 429, "too many open puzzles")
 		}
 		puz, answerX, err := captx.New()
@@ -81,8 +84,10 @@ func CaptchaWidgetHandler(st *store.Store) fun.RouteHandler {
 			exp: time.Now().Add(capPuzzleTTL).Unix(),
 		})
 		if id == "" {
+			st.LogCaptcha(store.CaptchaLog{KeyID: key.Id, Sitekey: sitekey, Event: "widget", Ip: ip, Msg: "rate limited"})
 			return widgetErr(ctx, 429, "too many open puzzles")
 		}
+		st.LogCaptcha(store.CaptchaLog{KeyID: key.Id, Sitekey: sitekey, Event: "widget", Ok: true, Ip: ip})
 		// 域名白名单同步到 CSP frame-ancestors，浏览器层拦非授权嵌入；'self' 保留本站
 		if len(domains) > 0 {
 			var b strings.Builder
@@ -106,6 +111,7 @@ func CaptchaVerifyHandler(st *store.Store) fun.RouteHandler {
 	return func(c *fun.RouteCtx) error {
 		ip := c.RequestCtx.RemoteIP().String()
 		if capBanned(ip) {
+			st.LogCaptcha(store.CaptchaLog{Event: "verify", Ip: ip, Msg: "banned"})
 			return capJSON(c, 0, "too many failures", nil)
 		}
 		id := strings.TrimSpace(c.Param("id"))
@@ -115,8 +121,10 @@ func CaptchaVerifyHandler(st *store.Store) fun.RouteHandler {
 		}
 		keyID, ok := tryPuzzle(ip, id, x)
 		if !ok {
+			st.LogCaptcha(store.CaptchaLog{KeyID: keyID, Event: "verify", Ip: ip, Msg: "failed"})
 			return capJSON(c, 0, "verify failed", nil)
 		}
+		st.LogCaptcha(store.CaptchaLog{KeyID: keyID, Event: "verify", Ok: true, Ip: ip})
 		return capJSON(c, 1, "ok", map[string]any{"token": mintToken(keyID)})
 	}
 }
@@ -124,6 +132,7 @@ func CaptchaVerifyHandler(st *store.Store) fun.RouteHandler {
 // CaptchaCheckHandler 对方后端核销：secret 鉴权 + token 一次性校验销毁。
 func CaptchaCheckHandler(st *store.Store) fun.RouteHandler {
 	return func(c *fun.RouteCtx) error {
+		ip := c.RequestCtx.RemoteIP().String()
 		secret := strings.TrimSpace(c.Param("secret"))
 		token := strings.TrimSpace(c.Param("token"))
 		if secret == "" || token == "" {
@@ -131,12 +140,15 @@ func CaptchaCheckHandler(st *store.Store) fun.RouteHandler {
 		}
 		key, err := st.CaptchaKeyBySecret(secret)
 		if err != nil {
+			st.LogCaptcha(store.CaptchaLog{Event: "check", Ip: ip, Msg: "invalid secret"})
 			return capJSON(c, 0, "invalid secret", nil)
 		}
 		if !consumeToken(token, key.Id) {
+			st.LogCaptcha(store.CaptchaLog{KeyID: key.Id, Sitekey: key.Sitekey, Event: "check", Ip: ip, Msg: "token invalid or expired"})
 			return capJSON(c, 0, "token invalid or expired", nil)
 		}
 		st.TouchCaptchaKey(key.Id)
+		st.LogCaptcha(store.CaptchaLog{KeyID: key.Id, Sitekey: key.Sitekey, Event: "check", Ok: true, Ip: ip})
 		return capJSON(c, 1, "ok", map[string]any{"sitekey": key.Sitekey})
 	}
 }

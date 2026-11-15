@@ -96,3 +96,42 @@ func (s *Store) DeleteCaptchaKey(id int64) error {
 func (s *Store) TouchCaptchaKey(id int64) {
 	_ = s.q.TouchCaptchaKey(storeCtx, id)
 }
+
+// ---- captcha_logs 调用流水 ----
+
+// CaptchaLog 一次接入方调用：event ∈ widget|verify|check
+type CaptchaLog struct {
+	Id        int64
+	KeyID     int64
+	Sitekey   string
+	Event     string
+	Ok        bool
+	Ip        string
+	Msg       string
+	CreatedAt int64
+}
+
+// LogCaptcha 写一条流水并顺带裁到最近 500 条（排障用，不做长期审计）
+func (s *Store) LogCaptcha(l CaptchaLog) {
+	l.CreatedAt = time.Now().Unix()
+	_ = s.q.InsertCaptchaLog(storeCtx, db.InsertCaptchaLogParams{
+		KeyID: l.KeyID, Sitekey: l.Sitekey, Event: l.Event,
+		Ok: b2i(l.Ok), Ip: l.Ip, Msg: l.Msg, CreatedAt: l.CreatedAt,
+	})
+	_ = s.q.TrimCaptchaLogs(storeCtx)
+}
+
+func (s *Store) ListCaptchaLogs(limit int64) ([]CaptchaLog, error) {
+	rows, err := s.q.ListCaptchaLogs(storeCtx, limit)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]CaptchaLog, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, CaptchaLog{
+			Id: r.ID, KeyID: r.KeyID, Sitekey: r.Sitekey, Event: r.Event,
+			Ok: r.Ok == 1, Ip: r.Ip, Msg: r.Msg, CreatedAt: r.CreatedAt,
+		})
+	}
+	return out, nil
+}

@@ -417,6 +417,17 @@ type CaptchaKeySaveDto struct {
 	Enabled *int64
 }
 
+// CaptchaLogView 接入方调用流水（排障用最近 500 条）
+type CaptchaLogView struct {
+	Id        int64
+	Sitekey   string
+	Event     string
+	Ok        bool
+	Ip        string
+	Msg       string
+	CreatedAt int64
+}
+
 // ---- settings ----
 
 type SettingDto struct {

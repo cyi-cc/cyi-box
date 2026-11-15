@@ -10,10 +10,12 @@ import {
 import { client } from '../lib/api'
 import { copyText } from '../lib/kit'
 import type captchaKeyView from '../api/captchaKeyView'
+import type captchaLogView from '../api/captchaLogView'
 
 const message = useMessage()
 
 const keys = ref<captchaKeyView[]>([])
+const logs = ref<captchaLogView[]>([])
 const editVisible = ref(false)
 const saving = ref(false)
 const form = ref({ id: 0, name: '', domains: '', enabled: 1 })
@@ -22,6 +24,8 @@ const snippetKey = ref<captchaKeyView | null>(null)
 async function refresh() {
   const r = await client.captchaSvc.listKeys()
   if (r.status === 0 && r.data) keys.value = r.data
+  const lr = await client.captchaSvc.logs()
+  if (lr.status === 0 && lr.data) logs.value = lr.data
 }
 onMounted(refresh)
 onActivated(refresh)
@@ -85,7 +89,7 @@ addEventListener('message', e => {
 }
 
 function checkSnippet(k: captchaKeyView): string {
-  return `GET ${location.origin}/api/v1/captcha/check?secret=${k.skey}&token=<token>`
+  return `GET ${location.origin}/v1/captcha/check?secret=${k.skey}&token=<token>`
 }
 
 function fmtTime(ts: number): string {
@@ -145,9 +149,30 @@ function fmtTime(ts: number): string {
       <div class="dim">
         1. 对方页面嵌 iframe 指向 <span class="mono">/captcha/widget?sitekey=pk_xxx</span>，用户滑块通过后
         <span class="mono">postMessage</span> 回传 token（2 分钟有效，一次性）；
-        2. 对方后端调 <span class="mono">/api/v1/captcha/check?secret=sk_xxx&amp;token=…</span> 校验并销毁。
+        2. 对方后端调 <span class="mono">/v1/captcha/check?secret=sk_xxx&amp;token=…</span> 校验并销毁。
         域名白名单命中 Referer + frame-ancestors，空名单不限制。
       </div>
+    </div>
+
+    <div class="log-sec">
+      <div class="log-head">
+        <b>调用流水</b>
+        <span class="dim">最近 {{ logs.length }} 条（保留 500）</span>
+        <n-button size="tiny" quaternary style="margin-left:auto" @click="refresh">刷新</n-button>
+      </div>
+      <div v-if="logs.length" class="log-list">
+        <div v-for="l in logs" :key="l.id" class="log-row">
+          <span class="log-time mono">{{ fmtTime(l.createdAt) }}</span>
+          <n-tag size="tiny" :bordered="false" :type="l.event === 'check' ? 'info' : l.event === 'verify' ? 'warning' : 'default'" class="log-ev">
+            {{ l.event }}
+          </n-tag>
+          <n-tag size="tiny" :bordered="false" :type="l.ok ? 'success' : 'error'">{{ l.ok ? '通过' : '失败' }}</n-tag>
+          <span class="log-sk mono">{{ l.sitekey || '—' }}</span>
+          <span class="log-ip mono">{{ l.ip }}</span>
+          <span class="log-msg dim">{{ l.msg }}</span>
+        </div>
+      </div>
+      <n-empty v-else description="还没有调用记录" size="small" style="padding:24px 0" />
     </div>
 
     <n-modal v-model:show="editVisible" preset="card" :title="form.id ? '编辑接入方' : '添加接入方'" style="width: 440px">
@@ -214,4 +239,16 @@ function fmtTime(ts: number): string {
   padding: 10px; font-size: 11px; font-family: Consolas, monospace;
   white-space: pre-wrap; word-break: break-all; margin: 0 0 8px;
 }
+.log-sec { margin-top: 16px; }
+.log-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 13px; }
+.log-list { display: flex; flex-direction: column; gap: 4px; max-height: 320px; overflow-y: auto; }
+.log-row {
+  display: flex; align-items: center; gap: 8px; font-size: 12px;
+  border: 1.5px solid var(--cb-ink); border-radius: 8px; padding: 5px 10px; background: #fff;
+}
+.log-time { color: var(--cb-ink-3); flex: none; }
+.log-ev { flex: none; }
+.log-sk { color: var(--cb-ink-2, #555); flex: none; }
+.log-ip { color: var(--cb-ink-3); flex: none; }
+.log-msg { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>

@@ -265,6 +265,22 @@ func (s *CaptchaSvc) SaveKey(d dto.CaptchaKeySaveDto) (dto.CaptchaKeyView, error
 	return dto.CaptchaKeyView{}, fun.Error(4001, "密钥不存在")
 }
 
+// Logs 最近 100 条接入方调用流水
+func (s *CaptchaSvc) Logs() ([]dto.CaptchaLogView, error) {
+	logs, err := s.Store.ListCaptchaLogs(100)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]dto.CaptchaLogView, 0, len(logs))
+	for _, l := range logs {
+		out = append(out, dto.CaptchaLogView{
+			Id: l.Id, Sitekey: l.Sitekey, Event: l.Event, Ok: l.Ok,
+			Ip: l.Ip, Msg: l.Msg, CreatedAt: l.CreatedAt,
+		})
+	}
+	return out, nil
+}
+
 func (s *CaptchaSvc) DeleteKey(d dto.IdDto) (dto.OkView, error) {
 	if err := s.Store.DeleteCaptchaKey(d.Id); err != nil {
 		return dto.OkView{}, err

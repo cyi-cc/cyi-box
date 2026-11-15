@@ -318,3 +318,14 @@ DELETE FROM captcha_keys WHERE id = ?;
 
 -- name: TouchCaptchaKey :exec
 UPDATE captcha_keys SET used_count = used_count + 1 WHERE id = ?;
+
+-- name: InsertCaptchaLog :exec
+INSERT INTO captcha_logs(key_id, sitekey, event, ok, ip, msg, created_at)
+VALUES(?, ?, ?, ?, ?, ?, ?);
+
+-- name: ListCaptchaLogs :many
+SELECT * FROM captcha_logs ORDER BY id DESC LIMIT ?;
+
+-- name: TrimCaptchaLogs :exec
+DELETE FROM captcha_logs WHERE id NOT IN
+(SELECT id FROM captcha_logs ORDER BY id DESC LIMIT 500);

@@ -64,6 +64,7 @@ var endpointPolicies = map[string]authPolicy{
 	"CaptchaSvc.ListKeys":    policyAdmin,
 	"CaptchaSvc.SaveKey":     policyAdmin,
 	"CaptchaSvc.DeleteKey":   policyAdmin,
+	"CaptchaSvc.Logs":        policyAdmin,
 	"SettingSvc.Get":         policyAuthenticated,
 	"SettingSvc.Set":         policyAdmin,
 	"PaySvc.List":            policyAdmin,

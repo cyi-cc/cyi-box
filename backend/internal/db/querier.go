@@ -59,6 +59,7 @@ type Querier interface {
 	IncShareDownloads(ctx context.Context, code string) error
 	InsertBookmark(ctx context.Context, arg InsertBookmarkParams) (int64, error)
 	InsertCaptchaKey(ctx context.Context, arg InsertCaptchaKeyParams) (int64, error)
+	InsertCaptchaLog(ctx context.Context, arg InsertCaptchaLogParams) error
 	InsertDbconn(ctx context.Context, arg InsertDbconnParams) (int64, error)
 	InsertFile(ctx context.Context, arg InsertFileParams) (int64, error)
 	InsertServer(ctx context.Context, arg InsertServerParams) (int64, error)
@@ -70,6 +71,7 @@ type Querier interface {
 	LicenseCardStatsAll(ctx context.Context, expiresAt int64) (LicenseCardStatsAllRow, error)
 	ListBookmarks(ctx context.Context) ([]Bookmark, error)
 	ListCaptchaKeys(ctx context.Context) ([]CaptchaKey, error)
+	ListCaptchaLogs(ctx context.Context, limit int64) ([]CaptchaLog, error)
 	ListDbconns(ctx context.Context) ([]Dbconn, error)
 	ListEnabledTools(ctx context.Context) ([]Tool, error)
 	ListFiles(ctx context.Context) ([]File, error)
@@ -93,6 +95,7 @@ type Querier interface {
 	SetPayOrderUpstream(ctx context.Context, arg SetPayOrderUpstreamParams) error
 	TouchCaptchaKey(ctx context.Context, id int64) error
 	TouchSession(ctx context.Context, arg TouchSessionParams) error
+	TrimCaptchaLogs(ctx context.Context) error
 	UpdateBookmark(ctx context.Context, arg UpdateBookmarkParams) (int64, error)
 	UpdateCaptchaKey(ctx context.Context, arg UpdateCaptchaKeyParams) error
 	UpdateDbconn(ctx context.Context, arg UpdateDbconnParams) (int64, error)

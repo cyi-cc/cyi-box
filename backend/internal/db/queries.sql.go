@@ -857,6 +857,34 @@ func (q *Queries) InsertCaptchaKey(ctx context.Context, arg InsertCaptchaKeyPara
 	return result.LastInsertId()
 }
 
+const insertCaptchaLog = `-- name: InsertCaptchaLog :exec
+INSERT INTO captcha_logs(key_id, sitekey, event, ok, ip, msg, created_at)
+VALUES(?, ?, ?, ?, ?, ?, ?)
+`
+
+type InsertCaptchaLogParams struct {
+	KeyID     int64
+	Sitekey   string
+	Event     string
+	Ok        int64
+	Ip        string
+	Msg       string
+	CreatedAt int64
+}
+
+func (q *Queries) InsertCaptchaLog(ctx context.Context, arg InsertCaptchaLogParams) error {
+	_, err := q.db.ExecContext(ctx, insertCaptchaLog,
+		arg.KeyID,
+		arg.Sitekey,
+		arg.Event,
+		arg.Ok,
+		arg.Ip,
+		arg.Msg,
+		arg.CreatedAt,
+	)
+	return err
+}
+
 const insertDbconn = `-- name: InsertDbconn :execlastid
 INSERT INTO dbconns(name, engine, host, port, username, password_enc, database, params, created_at, updated_at)
 VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -1165,6 +1193,42 @@ func (q *Queries) ListCaptchaKeys(ctx context.Context) ([]CaptchaKey, error) {
 			&i.Domains,
 			&i.Enabled,
 			&i.UsedCount,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCaptchaLogs = `-- name: ListCaptchaLogs :many
+SELECT id, key_id, sitekey, event, ok, ip, msg, created_at FROM captcha_logs ORDER BY id DESC LIMIT ?
+`
+
+func (q *Queries) ListCaptchaLogs(ctx context.Context, limit int64) ([]CaptchaLog, error) {
+	rows, err := q.db.QueryContext(ctx, listCaptchaLogs, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CaptchaLog{}
+	for rows.Next() {
+		var i CaptchaLog
+		if err := rows.Scan(
+			&i.ID,
+			&i.KeyID,
+			&i.Sitekey,
+			&i.Event,
+			&i.Ok,
+			&i.Ip,
+			&i.Msg,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -1976,6 +2040,16 @@ type TouchSessionParams struct {
 
 func (q *Queries) TouchSession(ctx context.Context, arg TouchSessionParams) error {
 	_, err := q.db.ExecContext(ctx, touchSession, arg.ExpiresAt, arg.Token)
+	return err
+}
+
+const trimCaptchaLogs = `-- name: TrimCaptchaLogs :exec
+DELETE FROM captcha_logs WHERE id NOT IN
+(SELECT id FROM captcha_logs ORDER BY id DESC LIMIT 500)
+`
+
+func (q *Queries) TrimCaptchaLogs(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, trimCaptchaLogs)
 	return err
 }
 
