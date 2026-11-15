@@ -230,13 +230,13 @@ hd.addEventListener('pointerdown',function(e){if(done)return;drag=true;x0=e.clie
 hd.addEventListener('pointermove',function(e){if(!drag||done)return;setX(e.clientX-x0)});
 hd.addEventListener('pointerup',function(){if(!drag||done)return;drag=false;send()});
 document.getElementById('re').onclick=function(){location.reload()};
-function parent(){try{return new URL(document.referrer).origin}catch(e){return'*'}}
+function porigin(){try{var o=new URL(document.referrer).origin;return /^https?:$/.test(new URL(document.referrer).protocol)?o:'*'}catch(e){return'*'}}
 function send(){
 done=true;
 fetch('/v1/captcha/verify',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'id='+encodeURIComponent(ID)+'&x='+x})
 .then(function(r){return r.json()}).then(function(d){
 if(d&&d.code===1){tr.className='track ok';st.className='stage ok';tip.textContent='验证通过';
-try{window.parent.postMessage({type:'cyi-captcha',token:d.token},parent())}catch(e){}}
+try{window.parent.postMessage({type:'cyi-captcha',token:d.token},porigin())}catch(e){}}
 else{tr.className='track err shake';tip.textContent='没对齐，再来一次';setTimeout(function(){location.reload()},700)}
 }).catch(function(){done=false;setX(0)});
 }
